@@ -59,14 +59,16 @@ std::int64_t execute_stream_vm(StreamValue* code, StreamValue* frame_buffer, std
     INSERT(OP_I64FLOAT_DIV_I64FLOATI_I64FLOAT);
     INSERT(OP_I64FLOAT_REM_I64FLOATI_I64FLOAT);
 
-    // INSERT(OP_I64_FMA_I64_I64_I64); INSERT(OP_FLOAT_FMA_FLOAT_FLOAT_FLOAT);
+    /* ---- Trinary Arithmetic Instructions ------- */
+    INSERT(OP_I64_FMA_I64_I64_I64); INSERT(OP_FLOAT_FMA_FLOAT_FLOAT_FLOAT);
 
-    // INSERT(OP_I64_FMA_II64_I64_I64); INSERT(OP_FLOAT_FMA_FLOATI_FLOAT_FLOAT);
-    // INSERT(OP_I64_FMA_II64_I64_II64); INSERT(OP_FLOAT_FMA_FLOATI_FLOAT_FLOATI);
-    // INSERT(OP_I64_FMA_I64_I64_II64); INSERT(OP_FLOAT_FMA_FLOAT_FLOAT_FLOATI);
+    INSERT(OP_I64_FMA_II64_I64_I64); INSERT(OP_FLOAT_FMA_FLOATI_FLOAT_FLOAT);
+    INSERT(OP_I64_FMA_II64_I64_II64); INSERT(OP_FLOAT_FMA_FLOATI_FLOAT_FLOATI);
+    INSERT(OP_I64_FMA_I64_I64_II64); INSERT(OP_FLOAT_FMA_FLOAT_FLOAT_FLOATI);
 
-    // INSERT(OP_I64_BIT_AND_I64_I64); INSERT(OP_I64_BIT_OR_I64_I64); INSERT(OP_I64_BIT_XOR_I64_I64);
-    // INSERT(OP_I64_BIT_XOR_I64_II64);
+    /* ---- Binary Bitwise Instructions ----------- */
+    INSERT(OP_I64_BIT_AND_I64_I64); INSERT(OP_I64_BIT_OR_I64_I64); INSERT(OP_I64_BIT_XOR_I64_I64);
+    INSERT(OP_I64_BIT_XOR_I64_II64);
  
     // INSERT(OP_I64_EQ_PTRI64FLOAT_PTRI64FLOAT);
     // INSERT(OP_I64_NEQ_PTRI64FLOAT_PTRI64FLOAT);
@@ -243,6 +245,13 @@ std::int64_t execute_stream_vm(StreamValue* code, StreamValue* frame_buffer, std
     OP_SIMPLE_BINARY_INST(OP_I64FLOAT_SUB_I64FLOATI_I64FLOAT, code[++pc], frame_buffer[code[++pc].value], lhs.value - rhs.value);
     OP_SIMPLE_DIV_REM_INST(OP_I64FLOAT_DIV_I64FLOATI_I64FLOAT, code[++pc], frame_buffer[code[++pc].value], std::min(lhs.value, rhs.value));
     OP_SIMPLE_DIV_REM_INST(OP_I64FLOAT_REM_I64FLOATI_I64FLOAT, code[++pc], frame_buffer[code[++pc].value], std::max(lhs.value, rhs.value));
+
+    /* ---- Binary Bitwise Instructions ----------- */
+    OP_SIMPLE_BINARY_INST(OP_I64_BIT_AND_I64_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value && rhs.value);
+    OP_SIMPLE_BINARY_INST(OP_I64_BIT_OR_I64_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value || rhs.value);
+    OP_SIMPLE_BINARY_INST(OP_I64_BIT_XOR_I64_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value ^ rhs.value);
+    OP_SIMPLE_BINARY_INST(OP_I64_BIT_XOR_I64_II64, frame_buffer[code[++pc].value], code[++pc], lhs.value ^ rhs.value);
+    
      /* ---- No-ops / control -------------------------------------------- */
     COLD_GOTO_BLOCK(OP_NOP);
     _L_OP_HALT: {
