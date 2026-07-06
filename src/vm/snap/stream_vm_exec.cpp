@@ -2,6 +2,7 @@
 #include "stream_macros.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <algorithm>
 namespace Hazel{
 namespace Snap{
 //traceback_func_loc_idx, func_call_loc_idx and memory_offset_idx must be innitialized with every value as -1
@@ -20,19 +21,15 @@ namespace Snap{
 //execute_cold_inst expects code = code + pc, frame_buffer = frame_buffer + curr_stack_offset, 
 //traceback_func_loc_idx = traceback_func_loc_idx + curr_func_call_depth, 
 //func_call_loc_idx = func_call_loc_idx + curr_func_call_depth, 
-// func_stack_size = func_stack_size + curr_func_call_depth
+//func_stack_size = func_stack_size + curr_func_call_depth
+//NOTE:-When function call happens we modify the frame_buffer, traceback_func_loc_idx, func_call_loc_idx and func_stack_size with the above mentioned offset.
+//We revert the changes when we return. So we dont need to offset again and again when we access
 static void __attribute__((noinline, cold)) execute_cold_inst(StreamValue* code, StreamValue* frame_buffer, std::int64_t* traceback_func_loc_idx,
                                                               std::int64_t* func_call_loc_idx, std::int64_t* func_stack_size) noexcept{}
-void execute_stream_vm(StreamValue* code, StreamValue* frame_buffer, std::int64_t* traceback_func_loc_idx,
+std::int64_t execute_stream_vm(StreamValue* code, StreamValue* frame_buffer, std::int64_t* traceback_func_loc_idx,
                        std::int64_t* func_call_loc_idx, std::int64_t* func_stack_size) noexcept{
     void* dispatch[(std::uint64_t)Opcode::OP_OPCODE_COUNT];
     std::size_t pc = 0;
-    std::size_t curr_stack_offset = 0;
-    std::size_t curr_func_call_depth = 0;
-
-    /* ---- No-ops / control -------------------------------------------- */
-    INSERT(OP_NOP);
-    INSERT(OP_HALT);
     
     /* ---- Loads ----------------------------------------- */
     INSERT(OP_PTR_LOAD_PTR);
@@ -42,24 +39,25 @@ void execute_stream_vm(StreamValue* code, StreamValue* frame_buffer, std::int64_
     INSERT(OP_PTR_LOAD_PTRI);
     INSERT(OP_I64_LOAD_II64); INSERT(OP_FLOAT_LOAD_FLOATI);
 
-    // INSERT(OP_I64FLOAT_ADD_I64FLOAT_I64FLOAT);
-    // INSERT(OP_I64FLOAT_SUB_I64FLOAT_I64FLOAT);
-    // INSERT(OP_I64_MUL_I64_I64); INSERT(OP_FLOAT_MUL_FLOAT_FLOAT);
-    // INSERT(OP_I64FLOAT_DIV_I64FLOAT_I64FLOAT);
-    // INSERT(OP_I64FLOAT_REM_I64FLOAT_I64FLOAT);
-    // INSERT(OP_I64FLOAT_MIN_I64FLOAT_I64FLOAT);
-    // INSERT(OP_I64FLOAT_MAX_I64FLOAT_I64FLOAT);
+    /* ---- Binary Arithmetic Instructions ----------------------------------*/
+    INSERT(OP_I64FLOAT_ADD_I64FLOAT_I64FLOAT);
+    INSERT(OP_I64FLOAT_SUB_I64FLOAT_I64FLOAT);
+    INSERT(OP_I64_MUL_I64_I64); INSERT(OP_FLOAT_MUL_TRUNC_FLOAT_FLOAT); INSERT(OP_FLOAT_MUL_ROUND_FLOAT_FLOAT);
+    INSERT(OP_I64FLOAT_DIV_I64FLOAT_I64FLOAT);
+    INSERT(OP_I64FLOAT_REM_I64FLOAT_I64FLOAT);
+    INSERT(OP_I64FLOAT_MIN_I64FLOAT_I64FLOAT);
+    INSERT(OP_I64FLOAT_MAX_I64FLOAT_I64FLOAT);
 
-    // INSERT(OP_I64FLOAT_ADD_I64FLOAT_I64FLOATI);
-    // INSERT(OP_I64_MUL_I64_II64); INSERT(OP_FLOAT_MUL_FLOAT_FLOATI);
-    // INSERT(OP_I64FLOAT_DIV_I64FLOAT_I64FLOATI);
-    // INSERT(OP_I64FLOAT_REM_I64FLOAT_I64FLOATI);
-    // INSERT(OP_I64FLOAT_MAX_I64FLOAT_I64FLOATI);
-    // INSERT(OP_I64FLOAT_MIN_I64FLOAT_I64FLOATI);
+    INSERT(OP_I64FLOAT_ADD_I64FLOAT_I64FLOATI);
+    INSERT(OP_I64_MUL_I64_II64); INSERT(OP_FLOAT_MUL_TRUNC_FLOAT_FLOATI); INSERT(OP_FLOAT_MUL_ROUND_FLOAT_FLOATI);
+    INSERT(OP_I64FLOAT_DIV_I64FLOAT_I64FLOATI);
+    INSERT(OP_I64FLOAT_REM_I64FLOAT_I64FLOATI);
+    INSERT(OP_I64FLOAT_MAX_I64FLOAT_I64FLOATI);
+    INSERT(OP_I64FLOAT_MIN_I64FLOAT_I64FLOATI);
 
-    // INSERT(OP_I64FLOAT_SUB_I64FLOATI_I64FLOAT);
-    // INSERT(OP_I64FLOAT_DIV_I64FLOATI_I64FLOAT);
-    // INSERT(OP_I64FLOAT_REM_I64FLOATI_I64FLOAT);
+    INSERT(OP_I64FLOAT_SUB_I64FLOATI_I64FLOAT);
+    INSERT(OP_I64FLOAT_DIV_I64FLOATI_I64FLOAT);
+    INSERT(OP_I64FLOAT_REM_I64FLOATI_I64FLOAT);
 
     // INSERT(OP_I64_FMA_I64_I64_I64); INSERT(OP_FLOAT_FMA_FLOAT_FLOAT_FLOAT);
 
@@ -164,13 +162,12 @@ void execute_stream_vm(StreamValue* code, StreamValue* frame_buffer, std::int64_
 
     // INSERT(OP_PRINT_PTR);
 
-    goto *dispatch[(std::uint64_t)code[0].value];
-
     /* ---- No-ops / control -------------------------------------------- */
-    COLD_GOTO_BLOCK(OP_NOP);
-    _L_OP_HALT: {
-        return;
-    }
+    INSERT(OP_NOP);
+    INSERT(OP_HALT);
+    INSERT(OP_TRAP);
+
+    goto *dispatch[(std::uint64_t)code[0].value];
 
     /* ---- Loads ----------------------------------------- */
     OP_SIMPLE_LOAD_INST(OP_PTR_LOAD_PTR, frame_buffer[code[++pc].value]);
@@ -196,6 +193,64 @@ void execute_stream_vm(StreamValue* code, StreamValue* frame_buffer, std::int64_
     OP_SIMPLE_LOAD_INST(OP_PTR_LOAD_PTRI, code[++pc]);
     OP_SIMPLE_LOAD_INST(OP_I64_LOAD_II64, code[++pc]);
     OP_SIMPLE_LOAD_INST(OP_FLOAT_LOAD_FLOATI, code[++pc]);
+
+    /* ---- Binary Arithmetic Instructions ----------------------------------*/
+    OP_SIMPLE_BINARY_INST(OP_I64FLOAT_ADD_I64FLOAT_I64FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value + rhs.value);
+    OP_SIMPLE_BINARY_INST(OP_I64FLOAT_SUB_I64FLOAT_I64FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value - rhs.value);
+    OP_SIMPLE_BINARY_INST(OP_I64_MUL_I64_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value * rhs.value);
+    OP_SIMPLE_BINARY_INST(OP_FLOAT_MUL_TRUNC_FLOAT_FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                          static_cast<int64_t>((static_cast<__int128>(lhs.value) * static_cast<__int128>(rhs.value)) / FIXED_POINT_FLOAT_SCALING_FACTOR));
+    _L_OP_FLOAT_MUL_ROUND_FLOAT_FLOAT:{
+        const auto lhs = frame_buffer[code[++pc].value];
+        const auto rhs = frame_buffer[code[++pc].value];
+        const auto ptr = frame_buffer + code[++pc].value;
+        __int128 product = static_cast<__int128>(lhs.value) * static_cast<__int128>(rhs.value);
+        __int128 result = (product >= 0)
+                            ? (product + FIXED_POINT_FLOAT_SCALING_FACTOR / 2) / FIXED_POINT_FLOAT_SCALING_FACTOR
+                            : (product - FIXED_POINT_FLOAT_SCALING_FACTOR / 2) / FIXED_POINT_FLOAT_SCALING_FACTOR;
+        ptr->value = static_cast<int64_t>(result);
+        ptr->type = lhs.type;
+        ptr->is_missing = lhs.is_missing || rhs.is_missing;
+        DISPATCH();
+    }
+    OP_SIMPLE_DIV_REM_INST(OP_I64FLOAT_DIV_I64FLOAT_I64FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value / rhs.value);
+    OP_SIMPLE_DIV_REM_INST(OP_I64FLOAT_REM_I64FLOAT_I64FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value % rhs.value);
+    OP_SIMPLE_BINARY_INST(OP_I64FLOAT_MIN_I64FLOAT_I64FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], std::min(lhs.value, rhs.value));
+    OP_SIMPLE_BINARY_INST(OP_I64FLOAT_MAX_I64FLOAT_I64FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], std::max(lhs.value, rhs.value));
+
+    OP_SIMPLE_BINARY_INST(OP_I64FLOAT_ADD_I64FLOAT_I64FLOATI, frame_buffer[code[++pc].value], code[++pc], lhs.value + rhs.value);
+    OP_SIMPLE_BINARY_INST(OP_I64_MUL_I64_II64, frame_buffer[code[++pc].value], code[++pc], lhs.value * rhs.value);
+    OP_SIMPLE_BINARY_INST(OP_FLOAT_MUL_TRUNC_FLOAT_FLOATI, frame_buffer[code[++pc].value], code[++pc], 
+                          static_cast<int64_t>((static_cast<__int128>(lhs.value) * static_cast<__int128>(rhs.value)) / FIXED_POINT_FLOAT_SCALING_FACTOR));
+    _L_OP_FLOAT_MUL_ROUND_FLOAT_FLOATI:{
+        const auto lhs = frame_buffer[code[++pc].value];
+        const auto rhs = code[++pc];
+        const auto ptr = frame_buffer + code[++pc].value;
+        __int128 product = static_cast<__int128>(lhs.value) * static_cast<__int128>(rhs.value);
+        __int128 result = (product >= 0)
+                            ? (product + FIXED_POINT_FLOAT_SCALING_FACTOR / 2) / FIXED_POINT_FLOAT_SCALING_FACTOR
+                            : (product - FIXED_POINT_FLOAT_SCALING_FACTOR / 2) / FIXED_POINT_FLOAT_SCALING_FACTOR;
+        ptr->value = static_cast<int64_t>(result);
+        ptr->type = lhs.type;
+        ptr->is_missing = lhs.is_missing || rhs.is_missing;
+        DISPATCH();
+    }
+    OP_SIMPLE_DIV_REM_INST(OP_I64FLOAT_DIV_I64FLOAT_I64FLOATI, frame_buffer[code[++pc].value], code[++pc], lhs.value / rhs.value);
+    OP_SIMPLE_DIV_REM_INST(OP_I64FLOAT_REM_I64FLOAT_I64FLOATI, frame_buffer[code[++pc].value], code[++pc], lhs.value % rhs.value);
+    OP_SIMPLE_BINARY_INST(OP_I64FLOAT_MAX_I64FLOAT_I64FLOATI, frame_buffer[code[++pc].value], code[++pc], std::min(lhs.value, rhs.value));
+    OP_SIMPLE_BINARY_INST(OP_I64FLOAT_MIN_I64FLOAT_I64FLOATI, frame_buffer[code[++pc].value], code[++pc], std::max(lhs.value, rhs.value));
+
+    OP_SIMPLE_BINARY_INST(OP_I64FLOAT_SUB_I64FLOATI_I64FLOAT, code[++pc], frame_buffer[code[++pc].value], lhs.value - rhs.value);
+    OP_SIMPLE_DIV_REM_INST(OP_I64FLOAT_DIV_I64FLOATI_I64FLOAT, code[++pc], frame_buffer[code[++pc].value], std::min(lhs.value, rhs.value));
+    OP_SIMPLE_DIV_REM_INST(OP_I64FLOAT_REM_I64FLOATI_I64FLOAT, code[++pc], frame_buffer[code[++pc].value], std::max(lhs.value, rhs.value));
+     /* ---- No-ops / control -------------------------------------------- */
+    COLD_GOTO_BLOCK(OP_NOP);
+    _L_OP_HALT: {
+        return -1;
+    }
+    _L_OP_TRAP: {
+        return pc;
+    }
 }
 }
 }

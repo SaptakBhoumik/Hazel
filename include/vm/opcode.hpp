@@ -22,9 +22,6 @@ enum class Opcode:std::uint8_t{
 
     I will go with the hybrid approach.
     */
-    /* ---- No-ops / control -------------------------------------------- */
-    OP_NOP = 0,//Does nothing, useful for padding or reserved space
-    OP_HALT,// stop execution, return to host. Must be last instruction in the program
     
     //How to understand the naming convention. Almost every opcode has one of type suffix. The type suffixes are of the <arg1>,<arg2>... format. arg<N> is the argument register/intermediate. Note that dest is optional. And if dest is given then the prefix of Opcode is the type of dest
     //I64 is a signed interger of 64 bits,I64FLOAT is a signed interger of 64 bits/fixed floating point and the instruction dont care, FLOAT is a fixed floating point number of 64 bits. The source of the operation is register i.e this references another variable
@@ -37,7 +34,7 @@ enum class Opcode:std::uint8_t{
     /* ---- Loads -----------------------------------------
     * LOAD_* takes an immediate/register and a dest register. If dest and source type dont match then it is a cast.
     */
-    OP_PTR_LOAD_PTR,
+    OP_PTR_LOAD_PTR = 0,
     OP_I64_LOAD_I64, OP_I64_LOAD_FLOAT,
     OP_FLOAT_LOAD_I64, OP_FLOAT_LOAD_FLOAT,
 
@@ -48,9 +45,10 @@ enum class Opcode:std::uint8_t{
     /* ---- Binary Arithmetic Instructions ----------------------------------*/
     //We are using fixed point floating point. So if both lhs and rhs are of same type(Which they should be) then ADD,SUB,DIV,REM,MIN,MAX dont care if it is a float/integer
     //But multiplication care so we have 2 varients for that because of scaling. For FLOAT multiplication, we do in 128 bit space before scaling down
+    //Div and rem return missing if rhs is 0 or (lhs,rhs) = (INT_MIN, -1) for signed integer. Because that is UB in C++.
     OP_I64FLOAT_ADD_I64FLOAT_I64FLOAT,
     OP_I64FLOAT_SUB_I64FLOAT_I64FLOAT,
-    OP_I64_MUL_I64_I64, OP_FLOAT_MUL_FLOAT_FLOAT,
+    OP_I64_MUL_I64_I64, OP_FLOAT_MUL_TRUNC_FLOAT_FLOAT, OP_FLOAT_MUL_ROUND_FLOAT_FLOAT,//The trunc and round are 2 diffrent mode from which user can choose
     OP_I64FLOAT_DIV_I64FLOAT_I64FLOAT,
     OP_I64FLOAT_REM_I64FLOAT_I64FLOAT,
     OP_I64FLOAT_MIN_I64FLOAT_I64FLOAT,
@@ -58,7 +56,7 @@ enum class Opcode:std::uint8_t{
 
     //Add,mul,min,max is commutative so we can have immediate as second argument and that will be enough
     OP_I64FLOAT_ADD_I64FLOAT_I64FLOATI,
-    OP_I64_MUL_I64_II64, OP_FLOAT_MUL_FLOAT_FLOATI,
+    OP_I64_MUL_I64_II64, OP_FLOAT_MUL_TRUNC_FLOAT_FLOATI, OP_FLOAT_MUL_ROUND_FLOAT_FLOATI,
     OP_I64FLOAT_DIV_I64FLOAT_I64FLOATI,
     OP_I64FLOAT_REM_I64FLOAT_I64FLOATI,
     OP_I64FLOAT_MAX_I64FLOAT_I64FLOATI,
@@ -226,7 +224,12 @@ enum class Opcode:std::uint8_t{
     OP_PRINT_PTR,//Prints the string pointed by the pointer
     //Nothing else because how a language wants to do traceback is too diffrent to provide. It is better to let the language implement it themselves vis FFI
     //And in case a constraint is violated then the language is supposed to throw and exit anyways so if that process is slow then not a big of a deal
- 
+  
+    /* ---- No-ops / control -------------------------------------------- */
+    OP_NOP,//Does nothing, useful for padding or reserved space
+    OP_HALT,// stop execution, return to host. Must be last instruction in the program. Returns -1 to host as a sign of successful execution
+    OP_TRAP,// stop execution, return to host and give index at with trap occurred. Helps with creating a traceback
+
     OP_OPCODE_COUNT    /* keep last: total opcode count, sizes dispatch tables */
 };
 namespace Trend{};
