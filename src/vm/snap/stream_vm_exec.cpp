@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <algorithm>
+#include "common_func.hpp"
+
 namespace Hazel{
 namespace Snap{
 //traceback_func_loc_idx, func_call_loc_idx and memory_offset_idx must be innitialized with every value as -1
@@ -24,12 +26,22 @@ namespace Snap{
 //func_stack_size = func_stack_size + curr_func_call_depth
 //NOTE:-When function call happens we modify the frame_buffer, traceback_func_loc_idx, func_call_loc_idx and func_stack_size with the above mentioned offset.
 //We revert the changes when we return. So we dont need to offset again and again when we access
-static void __attribute__((noinline, cold)) execute_cold_inst(StreamValue* code, StreamValue* frame_buffer, std::int64_t* traceback_func_loc_idx,
-                                                              std::int64_t* func_call_loc_idx, std::int64_t* func_stack_size) noexcept{}
+static std::uint64_t __attribute__((noinline, cold)) execute_cold_inst(std::uint64_t pc, StreamValue* code, StreamValue* frame_buffer, std::int64_t* traceback_func_loc_idx,
+                                                              std::int64_t* func_call_loc_idx, std::int64_t* func_stack_size) noexcept{
+    OP_SIMPLE_COLD_UNARY_INST(OP_I64FLOAT_ABS_I64FLOAT, frame_buffer[code[++pc].value], arg.type, std::abs(arg.value), arg.is_missing);
+    OP_SIMPLE_COLD_UNARY_INST(OP_FLOAT_CEIL_FLOAT, frame_buffer[code[++pc].value], ValueType::VT_FLOAT, fixed_point_ceil(arg.value), arg.is_missing);
+    OP_SIMPLE_COLD_UNARY_INST(OP_FLOAT_FLOOR_FLOAT, frame_buffer[code[++pc].value], ValueType::VT_FLOAT, fixed_point_floor(arg.value), arg.is_missing);
+    OP_SIMPLE_COLD_UNARY_INST(OP_FLOAT_INTEGRAL_PART_FLOAT, frame_buffer[code[++pc].value], ValueType::VT_FLOAT, fixed_point_integral_part(arg.value), arg.is_missing);
+    OP_SIMPLE_COLD_UNARY_INST(OP_FLOAT_FRACTIONAL_PART_FLOAT, frame_buffer[code[++pc].value], ValueType::VT_FLOAT, fixed_point_fractional_part(arg.value), arg.is_missing);
+    OP_SIMPLE_COLD_UNARY_INST(OP_FLOAT_ROUNDNEAREST_FLOAT, frame_buffer[code[++pc].value], ValueType::VT_FLOAT, fixed_point_roundnearest(arg.value), arg.is_missing);
+    OP_SIMPLE_COLD_UNARY_INST(OP_FLOAT_ROUNDEVEN_FLOAT, frame_buffer[code[++pc].value], ValueType::VT_FLOAT, fixed_point_roundeven(arg.value), arg.is_missing);
+    OP_SIMPLE_COLD_UNARY_INST(OP_FLOAT_SQRT_FLOAT, frame_buffer[code[++pc].value], ValueType::VT_FLOAT, fixed_point_sqrt(arg.value), arg.is_missing);
+}
+//path is the array of pc values where we want to trace the execution via OP_TRACE. It is used for debugging
 std::int64_t execute_stream_vm(StreamValue* code, StreamValue* frame_buffer, std::int64_t* traceback_func_loc_idx,
-                       std::int64_t* func_call_loc_idx, std::int64_t* func_stack_size) noexcept{
+                               std::int64_t* func_call_loc_idx, std::int64_t* func_stack_size, std::vector<std::uint64_t>& path) noexcept{
     void* dispatch[(std::uint64_t)Opcode::OP_OPCODE_COUNT];
-    std::size_t pc = 0;
+    std::uint64_t pc = 0;
     
     /* ---- Loads ----------------------------------------- */
     INSERT(OP_PTR_LOAD_PTR);
@@ -59,115 +71,121 @@ std::int64_t execute_stream_vm(StreamValue* code, StreamValue* frame_buffer, std
     INSERT(OP_I64FLOAT_DIV_I64FLOATI_I64FLOAT);
     INSERT(OP_I64FLOAT_REM_I64FLOATI_I64FLOAT);
 
-    /* ---- Trinary Arithmetic Instructions ------- */
-    INSERT(OP_I64_FMA_I64_I64_I64); INSERT(OP_FLOAT_FMA_FLOAT_FLOAT_FLOAT);
-
-    INSERT(OP_I64_FMA_II64_I64_I64); INSERT(OP_FLOAT_FMA_FLOATI_FLOAT_FLOAT);
-    INSERT(OP_I64_FMA_II64_I64_II64); INSERT(OP_FLOAT_FMA_FLOATI_FLOAT_FLOATI);
-    INSERT(OP_I64_FMA_I64_I64_II64); INSERT(OP_FLOAT_FMA_FLOAT_FLOAT_FLOATI);
+    /* ---- Other Arithmetic Instructions ------- */
+    INSERT_COLD(OP_I64_WEIGHTED_ADD_II64_I64_REG_WEIGHT); INSERT_COLD(OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOAT_REG_WEIGHT); INSERT_COLD(OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOAT_REG_WEIGHT); 
+    INSERT_COLD(OP_I64_WEIGHTED_ADD_II64_II64_REG_WEIGHT); INSERT_COLD(OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOATI_REG_WEIGHT); INSERT_COLD(OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOATI_REG_WEIGHT); 
+    INSERT_COLD(OP_I64_WEIGHTED_ADD_II64_I64_IMM_WEIGHT); INSERT_COLD(OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOAT_IMM_WEIGHT); INSERT_COLD(OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOAT_IMM_WEIGHT); 
+    INSERT_COLD(OP_I64_WEIGHTED_ADD_II64_II64_IMM_WEIGHT); INSERT_COLD(OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOATI_IMM_WEIGHT); INSERT_COLD(OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOATI_IMM_WEIGHT);
 
     /* ---- Binary Bitwise Instructions ----------- */
     INSERT(OP_I64_BIT_AND_I64_I64); INSERT(OP_I64_BIT_OR_I64_I64); INSERT(OP_I64_BIT_XOR_I64_I64);
     INSERT(OP_I64_BIT_XOR_I64_II64);
  
-    // INSERT(OP_I64_EQ_PTRI64FLOAT_PTRI64FLOAT);
-    // INSERT(OP_I64_NEQ_PTRI64FLOAT_PTRI64FLOAT);
-    // INSERT(OP_I64_GT_PTRI64FLOAT_PTRI64FLOAT);
-    // INSERT(OP_I64_GE_PTRI64FLOAT_PTRI64FLOAT);
-    // INSERT(OP_I64_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOAT);
-    // INSERT(OP_I64_NOT_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOAT);
-    // INSERT(OP_I64_IN_RANGE_PTR_PTR_PTR_I64);
-    // INSERT(OP_I64_NOT_IN_RANGE_PTR_PTR_PTR_I64);
+    /* ---- Comparison Instruction ------------------*/
+    INSERT(OP_I64_EQ_PTRI64FLOAT_PTRI64FLOAT);
+    INSERT(OP_I64_NEQ_PTRI64FLOAT_PTRI64FLOAT);
+    INSERT(OP_I64_GT_PTRI64FLOAT_PTRI64FLOAT);
+    INSERT(OP_I64_GE_PTRI64FLOAT_PTRI64FLOAT);
+    INSERT(OP_I64_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOAT);
+    INSERT(OP_I64_NOT_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOAT);
+    INSERT(OP_I64_IN_RANGE_PTR_PTR_PTR_I64);
+    INSERT(OP_I64_NOT_IN_RANGE_PTR_PTR_PTR_I64);
 
-    // INSERT(OP_I64_EQ_PTRI64FLOAT_PTRI64FLOATI);
-    // INSERT(OP_I64_NEQ_PTRI64FLOAT_PTRI64FLOATI);
-    // INSERT(OP_I64_GT_PTRI64FLOAT_PTRI64FLOATI);
-    // INSERT(OP_I64_GE_PTRI64FLOAT_PTRI64FLOATI);
-    // INSERT(OP_I64_GT_PTRI64FLOATI_PTRI64FLOAT);
-    // INSERT(OP_I64_GE_PTRI64FLOATI_PTRI64FLOAT);
-    // INSERT(OP_I64_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOATI);
-    // INSERT(OP_I64_NOT_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOATI);
-    // INSERT(OP_I64_IN_RANGE_PTR_PTR_PTR_I64I);
-    // INSERT(OP_I64_NOT_IN_RANGE_PTR_PTR_PTR_I64I);
+    INSERT(OP_I64_EQ_PTRI64FLOAT_PTRI64FLOATI);
+    INSERT(OP_I64_NEQ_PTRI64FLOAT_PTRI64FLOATI);
+    INSERT(OP_I64_GT_PTRI64FLOAT_PTRI64FLOATI);
+    INSERT(OP_I64_GE_PTRI64FLOAT_PTRI64FLOATI);
+    INSERT(OP_I64_GT_PTRI64FLOATI_PTRI64FLOAT);
+    INSERT(OP_I64_GE_PTRI64FLOATI_PTRI64FLOAT);
+    INSERT(OP_I64_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOATI);
+    INSERT(OP_I64_NOT_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOATI);
+    INSERT(OP_I64_IN_RANGE_PTR_PTR_PTR_I64I);
+    INSERT(OP_I64_NOT_IN_RANGE_PTR_PTR_PTR_I64I);
 
-    // INSERT(OP_I64_ABS_I64); INSERT(OP_FLOAT_ABS_FLOAT);
-    // INSERT(OP_FLOAT_CEIL_FLOAT);
-    // INSERT(OP_FLOAT_FLOOR_FLOAT);
-    // INSERT(OP_FLOAT_INTEGRAL_PART_FLOAT);
-    // INSERT(OP_FLOAT_FRACTIONAL_PART_FLOAT);
-    // INSERT(OP_FLOAT_ROUNDNEAREST_FLOAT);
-    // INSERT(OP_FLOAT_ROUNDEVEN_FLOAT);
-    // INSERT(OP_FLOAT_SQRT_FLOAT);
-    // INSERT(OP_I64_HAS_VALUE);
-    // INSERT(OP_I64_HAS_NO_VALUE);
+    /* ---- Unary Instruction ------------------*/
+    INSERT_COLD(OP_I64FLOAT_ABS_I64FLOAT);
+    INSERT_COLD(OP_FLOAT_CEIL_FLOAT);
+    INSERT_COLD(OP_FLOAT_FLOOR_FLOAT);
+    INSERT_COLD(OP_FLOAT_INTEGRAL_PART_FLOAT);
+    INSERT_COLD(OP_FLOAT_FRACTIONAL_PART_FLOAT);
+    INSERT_COLD(OP_FLOAT_ROUNDNEAREST_FLOAT);
+    INSERT_COLD(OP_FLOAT_ROUNDEVEN_FLOAT);
+    INSERT_COLD(OP_FLOAT_SQRT_FLOAT);
+    INSERT(OP_I64_HAS_VALUE);
+    INSERT(OP_I64_HAS_NO_VALUE);
     
-    // INSERT(OP_BR_EQ_PTRI64FLOAT_PTRI64FLOAT);
-    // INSERT(OP_BR_GT_PTRI64FLOAT_PTRI64FLOAT);
-    // INSERT(OP_BR_OR_I64_I64);
-    // INSERT(OP_BR_AND_I64_I64);
-    // INSERT(OP_BR_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOAT);
-    // INSERT(OP_BR_IN_RANGE_PTR_PTR_PTR_I64);
+    /* ---- Fused Compare-and-Branch(Takes in 2 or 4 operands + 3 branches(if branch,else branch and data missing branch)) ----------------------------------------*/
+    INSERT(OP_BR_EQ_PTRI64FLOAT_PTRI64FLOAT);
+    INSERT(OP_BR_GT_PTRI64FLOAT_PTRI64FLOAT);
+    INSERT(OP_BR_OR_I64_I64);
+    INSERT(OP_BR_AND_I64_I64);
+    INSERT(OP_BR_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOAT);
+    INSERT(OP_BR_IN_RANGE_PTR_PTR_PTR_I64);
     
-    // INSERT(OP_BR_EQ_I64FLOAT_I64FLOATI);
-    // INSERT(OP_BR_GT_I64FLOAT_I64FLOATI);
-    // INSERT(OP_BR_GT_I64FLOATI_I64FLOAT);
-    // INSERT(OP_BR_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOATI);
-    // INSERT(OP_BR_IN_RANGE_PTR_PTR_PTR_I64I);
+    INSERT(OP_BR_EQ_I64FLOAT_I64FLOATI);
+    INSERT(OP_BR_GT_I64FLOAT_I64FLOATI);
+    INSERT(OP_BR_GT_I64FLOATI_I64FLOAT);
+    INSERT(OP_BR_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOATI);
+    INSERT(OP_BR_IN_RANGE_PTR_PTR_PTR_I64I);
  
-    // INSERT(OP_BR);
-    // INSERT(OP_BR_TRUE);
+    /*--------Regular branch-----*/
+    INSERT(OP_BR);
+    INSERT(OP_BR_TRUE);
 
+    /* ---- Calls --------------------------------------- */
     // INSERT(OP_CALL);
     // INSERT(OP_EXTERN_CALL_PTR);
     // INSERT(OP_RET);
  
+    /* ---- Heap objects: arrays ---------------------------------------------*/
+    INSERT_COLD(OP_PTR_ALLOC_I64_I64_II64);
+    INSERT_COLD(OP_PTR_REALLOC_I64_I64_II64); 
+    INSERT_COLD(OP_FREE_PTR); 
+
+    INSERT(OP_I64_GET_PTR_I64);
+    INSERT(OP_FLOAT_GET_PTR_I64);
+    INSERT(OP_PTR_GET_PTR_I64);
+
+    INSERT(OP_I64_GET_PTR_II64);
+    INSERT(OP_FLOAT_GET_PTR_II64);
+    INSERT(OP_PTR_GET_PTR_II64);
+
+    INSERT(OP_PTR_PTROFFSET_ADD_PTR_I64);
+    INSERT(OP_PTR_PTROFFSET_ADD_PTR_II64);
+    INSERT(OP_PTR_PTROFFSET_SUB_PTR_I64);
+
+    INSERT(OP_SET_PTR_I64_I64FLOAT);
+    INSERT(OP_SET_PTR_I64_PTR);
+
+    INSERT(OP_SET_PTR_II64_I64FLOAT);
+    INSERT(OP_SET_PTR_II64_PTR);
+
+    INSERT(OP_I64_LEN_PTR);
+    INSERT(OP_I64_CAP_PTR);
+    INSERT(OP_I64_ELM_SIZE_PTR);
+    INSERT_COLD(OP_POP_PTR_I64);
+    INSERT_COLD(OP_PUSH_PTR_PTR_I64);
+    INSERT_COLD(OP_PUSH_PTR_I64FLOAT);
+    INSERT_COLD(OP_MEMCPY_PTR_PTR_I64);
+    INSERT_COLD(OP_MEMMOVE_PTR_PTR_I64);
+    INSERT_COLD(OP_I64_UNSIGNED_CMP_PTR_PTR_I64);
     
-    // INSERT(OP_PTR_ALLOC_I64_I64_II64);
-    // INSERT(OP_PTR_REALLOC_I64_I64_II64); 
-    // INSERT(OP_FREE_PTR); 
+    /*----Time series related--------------------------------------*/
+    INSERT_COLD(OP_I64_BINARY_FIND_GE_PTR_I64_I64FLOAT); 
+    INSERT_COLD(OP_I64_BINARY_FIND_LE_PTR_I64_I64FLOAT);  
+    INSERT_COLD(OP_I64_BINARY_FIND_GE_PTR_II64_I64FLOAT);
+    INSERT_COLD(OP_I64_BINARY_FIND_LE_PTR_II64_I64FLOAT);
 
-    // INSERT(OP_I64_GET_PTR_I64);
-    // INSERT(OP_FLOAT_GET_PTR_I64);
-    // INSERT(OP_PTR_GET_PTR_I64);
-
-    // INSERT(OP_I64_GET_PTR_II64);
-    // INSERT(OP_FLOAT_GET_PTR_II64);
-    // INSERT(OP_PTR_GET_PTR_II64);
-
-    // INSERT(OP_PTR_PTROFFSET_ADD_PTR_I64);
-    // INSERT(OP_PTR_PTROFFSET_SUB_PTR_I64);
-
-    // INSERT(OP_PTR_PTROFFSET_ADD_PTR_II64);
-
-    // INSERT(OP_SET_PTR_I64_I64FLOAT);
-    // INSERT(OP_SET_PTR_I64_PTR);
-
-    // INSERT(OP_SET_PTR_II64_I64FLOAT);
-    // INSERT(OP_SET_PTR_II64_PTR);
-
-    // INSERT(OP_I64_LEN_PTR);
-    // INSERT(OP_I64_CAP_PTR);
-    // INSERT(OP_I64_ELM_SIZE_PTR);
-    // INSERT(OP_POP_PTR_I64);
-    // INSERT(OP_PUSH_PTR_PTR_I64);
-    // INSERT(OP_PUSH_PTR_I64FLOAT);
-    // INSERT(OP_MEMCPY_PTR_PTR_I64);
-    // INSERT(OP_MEMMOVE_PTR_PTR_I64);
-    // INSERT(OP_I64_UNSIGNED_CMP_PTR_PTR_I64);
-    
-    // INSERT(OP_GC_SAFEPOINT);
-
-    // INSERT(OP_I64_BINARY_FIND_GE_PTR_I64_I64FLOAT); 
-    // INSERT(OP_I64_BINARY_FIND_LE_PTR_I64_I64FLOAT);  
-    // INSERT(OP_I64_BINARY_FIND_GE_PTR_II64_I64FLOAT);
-    // INSERT(OP_I64_BINARY_FIND_LE_PTR_II64_I64FLOAT);
-
-    // INSERT(OP_PRINT_PTR);
+    /*-------Traceback--------------------------------*/
+    INSERT_COLD(OP_PRINT_PTR);
 
     /* ---- No-ops / control -------------------------------------------- */
     INSERT(OP_NOP);
     INSERT(OP_HALT);
     INSERT(OP_TRAP);
+    INSERT(OP_IF_TRUE_TRAP);
+    INSERT(OP_IF_MISSING_TRAP);
+    INSERT(OP_TRACE);
 
     goto *dispatch[(std::uint64_t)code[0].value];
 
@@ -251,14 +269,150 @@ std::int64_t execute_stream_vm(StreamValue* code, StreamValue* frame_buffer, std
     OP_SIMPLE_BINARY_INST(OP_I64_BIT_OR_I64_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value || rhs.value);
     OP_SIMPLE_BINARY_INST(OP_I64_BIT_XOR_I64_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value ^ rhs.value);
     OP_SIMPLE_BINARY_INST(OP_I64_BIT_XOR_I64_II64, frame_buffer[code[++pc].value], code[++pc], lhs.value ^ rhs.value);
+
+    /* ---- Comparison Instruction ------------------*/
+    OP_SIMPLE_CMP_BINARY_INST(OP_I64_EQ_PTRI64FLOAT_PTRI64FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value == rhs.value);
+    OP_SIMPLE_CMP_BINARY_INST(OP_I64_NEQ_PTRI64FLOAT_PTRI64FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value != rhs.value);
+    OP_SIMPLE_CMP_BINARY_INST(OP_I64_GT_PTRI64FLOAT_PTRI64FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value > rhs.value);
+    OP_SIMPLE_CMP_BINARY_INST(OP_I64_GE_PTRI64FLOAT_PTRI64FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value >= rhs.value);
+    OP_SIMPLE_IN_RANGE_INST(OP_I64_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOAT, 
+                            frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                            frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                            is_in_range_with_step(arg1.value, arg2.value, arg3.value, arg4.value));
+    OP_SIMPLE_IN_RANGE_INST(OP_I64_NOT_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOAT, 
+                            frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                            frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                            !is_in_range_with_step(arg1.value, arg2.value, arg3.value, arg4.value));
+    OP_SIMPLE_IN_RANGE_INST(OP_I64_IN_RANGE_PTR_PTR_PTR_I64, 
+                            frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                            frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                            is_in_range_with_step(arg1.value, arg2.value, arg3.value, arg4.value*arg1.element_size));//NOTE:Always use the element size of arg1
+    OP_SIMPLE_IN_RANGE_INST(OP_I64_NOT_IN_RANGE_PTR_PTR_PTR_I64, 
+                            frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                            frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                            !is_in_range_with_step(arg1.value, arg2.value, arg3.value, arg4.value*arg1.element_size));//NOTE:Always use the element size of arg1
+
+    OP_SIMPLE_CMP_BINARY_INST(OP_I64_EQ_PTRI64FLOAT_PTRI64FLOATI, frame_buffer[code[++pc].value], code[++pc], lhs.value == rhs.value);
+    OP_SIMPLE_CMP_BINARY_INST(OP_I64_NEQ_PTRI64FLOAT_PTRI64FLOATI, frame_buffer[code[++pc].value], code[++pc], lhs.value != rhs.value);
+    OP_SIMPLE_CMP_BINARY_INST(OP_I64_GT_PTRI64FLOAT_PTRI64FLOATI, frame_buffer[code[++pc].value], code[++pc], lhs.value > rhs.value);
+    OP_SIMPLE_CMP_BINARY_INST(OP_I64_GE_PTRI64FLOAT_PTRI64FLOATI, frame_buffer[code[++pc].value], code[++pc], lhs.value >= rhs.value);
+    OP_SIMPLE_CMP_BINARY_INST(OP_I64_GT_PTRI64FLOATI_PTRI64FLOAT, code[++pc], frame_buffer[code[++pc].value], lhs.value > rhs.value);
+    OP_SIMPLE_CMP_BINARY_INST(OP_I64_GE_PTRI64FLOATI_PTRI64FLOAT, code[++pc], frame_buffer[code[++pc].value], lhs.value >= rhs.value);
+    OP_SIMPLE_IN_RANGE_INST(OP_I64_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOATI, 
+                            frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                            frame_buffer[code[++pc].value], code[++pc], 
+                            is_in_range_with_step(arg1.value, arg2.value, arg3.value, arg4.value));
+    OP_SIMPLE_IN_RANGE_INST(OP_I64_NOT_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOATI, 
+                            frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                            frame_buffer[code[++pc].value], code[++pc], 
+                            !is_in_range_with_step(arg1.value, arg2.value, arg3.value, arg4.value));
+    OP_SIMPLE_IN_RANGE_INST(OP_I64_IN_RANGE_PTR_PTR_PTR_I64I, 
+                            frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                            frame_buffer[code[++pc].value], code[++pc], 
+                            is_in_range_with_step(arg1.value, arg2.value, arg3.value, arg4.value*arg1.element_size));//NOTE:Always use the element size of arg1
+    OP_SIMPLE_IN_RANGE_INST(OP_I64_NOT_IN_RANGE_PTR_PTR_PTR_I64I, 
+                            frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                            frame_buffer[code[++pc].value], code[++pc], 
+                            !is_in_range_with_step(arg1.value, arg2.value, arg3.value, arg4.value*arg1.element_size));//NOTE:Always use the element size of arg1
     
-     /* ---- No-ops / control -------------------------------------------- */
-    COLD_GOTO_BLOCK(OP_NOP);
-    _L_OP_HALT: {
+    /* ---- Unary Instruction ------------------*/
+    OP_SIMPLE_UNARY_INST(OP_I64_HAS_VALUE, frame_buffer[code[++pc].value], ValueType::VT_I64, arg.is_missing, false);
+    OP_SIMPLE_UNARY_INST(OP_I64_HAS_NO_VALUE, frame_buffer[code[++pc].value], ValueType::VT_I64, arg.is_missing, false);
+
+    /* ---- Fused Compare-and-Branch(Takes in 2 or 4 operands + 3 branches(if branch,else branch and data missing branch)) ----------------------------------------*/
+    OP_SIMPLE_BR_BINARY_CMP_INST(OP_BR_EQ_PTRI64FLOAT_PTRI64FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value == rhs.value);
+    OP_SIMPLE_BR_BINARY_CMP_INST(OP_BR_GT_PTRI64FLOAT_PTRI64FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value > rhs.value);
+    OP_SIMPLE_BR_BINARY_CMP_INST(OP_BR_OR_I64_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value || rhs.value);
+    OP_SIMPLE_BR_BINARY_CMP_INST(OP_BR_AND_I64_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value && rhs.value);
+    OP_SIMPLE_BR_IN_RANGE_INST(OP_BR_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOAT, 
+                               frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                               frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                               is_in_range_with_step(arg1.value, arg2.value, arg3.value, arg4.value));
+    OP_SIMPLE_BR_IN_RANGE_INST(OP_BR_IN_RANGE_PTR_PTR_PTR_I64, 
+                               frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                               frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                               is_in_range_with_step(arg1.value, arg2.value, arg3.value, arg4.value*arg1.element_size));//NOTE:Always use the element size of arg1
+    
+    OP_SIMPLE_BR_BINARY_CMP_INST(OP_BR_EQ_I64FLOAT_I64FLOATI, frame_buffer[code[++pc].value], code[++pc], lhs.value == rhs.value);
+    OP_SIMPLE_BR_BINARY_CMP_INST(OP_BR_GT_I64FLOAT_I64FLOATI, frame_buffer[code[++pc].value], code[++pc], lhs.value > rhs.value);
+    OP_SIMPLE_BR_BINARY_CMP_INST(OP_BR_GT_I64FLOATI_I64FLOAT, code[++pc], frame_buffer[code[++pc].value], lhs.value > rhs.value);
+    OP_SIMPLE_BR_IN_RANGE_INST(OP_BR_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOATI, 
+                               frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                               frame_buffer[code[++pc].value], code[++pc], 
+                               is_in_range_with_step(arg1.value, arg2.value, arg3.value, arg4.value));
+    OP_SIMPLE_BR_IN_RANGE_INST(OP_BR_IN_RANGE_PTR_PTR_PTR_I64I, 
+                               frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                               frame_buffer[code[++pc].value], code[++pc], 
+                               is_in_range_with_step(arg1.value, arg2.value, arg3.value, arg4.value*arg1.element_size));//NOTE:Always use the element size of arg1
+    
+    /*--------Regular branch-----*/
+    _L_OP_BR:{
+        pc = code[++pc].value;
+        goto *dispatch[(std::uint64_t)code[pc].value];
+    }
+    _L_OP_BR_TRUE:{
+        const auto condition = frame_buffer[code[++pc].value];
+        const auto label1 = frame_buffer[code[++pc].value].value;
+        const auto label2 = frame_buffer[code[++pc].value].value;
+        const auto label3 = frame_buffer[code[++pc].value].value;
+        if(condition.is_missing){GOTO(label3);}
+        else if(condition.value){GOTO(label1);}
+        else{GOTO(label2);}
+    }
+
+    /* ---- Calls --------------------------------------- */
+
+    /* ---- Heap objects: arrays ---------------------------------------------*/
+    OP_SIMPLE_GET_INT64FLOAT_INST(OP_I64_GET_PTR_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], ValueType::VT_I64);
+    OP_SIMPLE_GET_INT64FLOAT_INST(OP_FLOAT_GET_PTR_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], ValueType::VT_I64);
+    OP_SIMPLE_GET_PTR_INST(OP_PTR_GET_PTR_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value]);
+
+    OP_SIMPLE_GET_INT64FLOAT_INST(OP_I64_GET_PTR_II64, frame_buffer[code[++pc].value], code[++pc], ValueType::VT_I64);
+    OP_SIMPLE_GET_INT64FLOAT_INST(OP_FLOAT_GET_PTR_II64, frame_buffer[code[++pc].value], code[++pc], ValueType::VT_I64);
+    OP_SIMPLE_GET_PTR_INST(OP_PTR_GET_PTR_II64, frame_buffer[code[++pc].value], code[++pc]);
+
+    OP_SIMPLE_PTR_OFFSET_INST(OP_PTR_PTROFFSET_ADD_PTR_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], ptr.value + offset.value*ptr.element_size);
+    OP_SIMPLE_PTR_OFFSET_INST(OP_PTR_PTROFFSET_SUB_PTR_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], ptr.value - offset.value*ptr.element_size);
+
+    OP_SIMPLE_PTR_OFFSET_INST(OP_PTR_PTROFFSET_ADD_PTR_II64, frame_buffer[code[++pc].value], code[++pc], ptr.value + offset.value*ptr.element_size);
+
+    OP_SIMPLE_SET_INT64FLOAT_INST(OP_SET_PTR_I64_I64FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], frame_buffer[code[++pc].value]);
+    OP_SIMPLE_SET_PTR_INST(OP_SET_PTR_I64_PTR, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], frame_buffer[code[++pc].value]);
+
+    OP_SIMPLE_SET_INT64FLOAT_INST(OP_SET_PTR_II64_I64FLOAT, frame_buffer[code[++pc].value], code[++pc], frame_buffer[code[++pc].value]);
+    OP_SIMPLE_SET_PTR_INST(OP_SET_PTR_II64_PTR, frame_buffer[code[++pc].value], code[++pc], frame_buffer[code[++pc].value]);
+
+    OP_SIMPLE_PTR_GETTER_METHOD_INST(OP_I64_LEN_PTR,ptr.length);
+    OP_SIMPLE_PTR_GETTER_METHOD_INST(OP_I64_CAP_PTR,ptr.capacity);
+    OP_SIMPLE_PTR_GETTER_METHOD_INST(OP_I64_ELM_SIZE_PTR,ptr.element_size);
+
+    /* ---- No-ops / control -------------------------------------------- */
+    _L_OP_NOP:{
+        DISPATCH();
+    }
+    _L_OP_HALT:{
         return -1;
     }
-    _L_OP_TRAP: {
+    _L_OP_TRAP:{
         return pc;
+    }
+    _L_OP_IF_TRUE_TRAP:{
+        const auto condition = frame_buffer[code[++pc].value];
+        if(condition.is_missing || !condition.value){return pc;}
+        else{DISPATCH();}
+    }
+    _L_OP_IF_MISSING_TRAP:{
+        const auto condition = frame_buffer[code[++pc].value];
+        if(!condition.is_missing){return pc;}
+        else{DISPATCH();}
+    }
+    _L_OP_TRACE:{
+        path.push_back(pc);
+        DISPATCH();
+    }
+    ___L_COLD_LABEL:{
+        pc = execute_cold_inst(pc, code, frame_buffer, traceback_func_loc_idx, func_call_loc_idx, func_stack_size);//pc on the last argument of the instruction or on the instruction if it has no argument
+        DISPATCH();
     }
 }
 }

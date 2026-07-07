@@ -68,19 +68,26 @@ enum class Opcode:std::uint8_t{
 
 
     /* ---- Trinary Arithmetic Instructions ------- */
-    OP_I64_FMA_I64_I64_I64, OP_FLOAT_FMA_FLOAT_FLOAT_FLOAT,
+    //The following instructon are important for general purpose programming. But I doubt of much use for this specific use case. Removing it for now. If we need we can add it back.
+    // OP_I64_FMA_I64_I64_I64, OP_FLOAT_FMA_FLOAT_FLOAT_FLOAT,
     //The following are removed because they are rarer and can be implemented using the above instruction + one SUB instruction
     // OP_I64_FMS_I64_I64_I64, OP_FLOAT_FMS_FLOAT_FLOAT_FLOAT,
     // OP_I64_FNMA_I64_I64_I64, OP_FLOAT_FNMA_FLOAT_FLOAT_FLOAT,
     // OP_I64_FNMS_I64_I64_I64, OP_FLOAT_FNMS_FLOAT_FLOAT_FLOAT,
 
-    OP_I64_FMA_II64_I64_I64, OP_FLOAT_FMA_FLOATI_FLOAT_FLOAT,
-    OP_I64_FMA_II64_I64_II64, OP_FLOAT_FMA_FLOATI_FLOAT_FLOATI,
-    OP_I64_FMA_I64_I64_II64, OP_FLOAT_FMA_FLOAT_FLOAT_FLOATI,
+    // OP_I64_FMA_II64_I64_I64, OP_FLOAT_FMA_FLOATI_FLOAT_FLOAT,
+    // OP_I64_FMA_II64_I64_II64, OP_FLOAT_FMA_FLOATI_FLOAT_FLOATI,
+    // OP_I64_FMA_I64_I64_II64, OP_FLOAT_FMA_FLOAT_FLOAT_FLOATI,
     //Same reason as above
     // OP_I64_FMS_II64_I64_II64, OP_FLOAT_FMS_FLOATI_FLOAT_FLOATI,
     // OP_I64_FNMA_I64_I64_II64, OP_FLOAT_FNMA_FLOAT_FLOAT_FLOATI,
 
+
+    /* ---- Other Arithmetic Instructions ------- */
+    OP_I64_WEIGHTED_ADD_II64_I64_REG_WEIGHT, OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOAT_REG_WEIGHT, OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOAT_REG_WEIGHT, 
+    OP_I64_WEIGHTED_ADD_II64_II64_REG_WEIGHT, OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOATI_REG_WEIGHT, OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOATI_REG_WEIGHT, 
+    OP_I64_WEIGHTED_ADD_II64_I64_IMM_WEIGHT, OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOAT_IMM_WEIGHT, OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOAT_IMM_WEIGHT, 
+    OP_I64_WEIGHTED_ADD_II64_II64_IMM_WEIGHT, OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOATI_IMM_WEIGHT, OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOATI_IMM_WEIGHT, 
 
     /* ---- Binary Bitwise Instructions ----------- */
     OP_I64_BIT_AND_I64_I64, OP_I64_BIT_OR_I64_I64, OP_I64_BIT_XOR_I64_I64,
@@ -124,7 +131,7 @@ enum class Opcode:std::uint8_t{
 
  
     /* ---- Unary Instruction ------------------*/
-    OP_I64_ABS_I64, OP_FLOAT_ABS_FLOAT,
+    OP_I64FLOAT_ABS_I64FLOAT,
     OP_FLOAT_CEIL_FLOAT,
     OP_FLOAT_FLOOR_FLOAT,
     OP_FLOAT_INTEGRAL_PART_FLOAT,
@@ -136,7 +143,7 @@ enum class Opcode:std::uint8_t{
     OP_I64_HAS_NO_VALUE,//Expects a register. Checks if the value stored in register has value or not
     
 
-    /* ---- Fused Binary Compare-and-Branch(Takes in 2 operands + 3 branches(if branch,else branch and data missing branch)) ----------------------------------------*/
+    /* ---- Fused Compare-and-Branch(Takes in 2 or 4 operands + 3 branches(if branch,else branch and data missing branch)) ----------------------------------------*/
     OP_BR_EQ_PTRI64FLOAT_PTRI64FLOAT,
     OP_BR_GT_PTRI64FLOAT_PTRI64FLOAT,
     OP_BR_OR_I64_I64,
@@ -156,14 +163,10 @@ enum class Opcode:std::uint8_t{
     OP_BR_TRUE,//Only takes in 1 condition operand + 3 branches. 
 
 
-    /* ---- unconditional jump & calls ---------------------------------------
-     * CALL/TAILCALL target jmp_true as
-     * the callee's first instruction; TAILCALL reuses the current frame
-     * instead of pushing a new one */
-    //
+    /* ---- Calls --------------------------------------- */
     OP_CALL,
-    OP_EXTERN_CALL_PTR,//Takes in a pointer to the function. The ptr can be from DL_OPEN or injected by the compiler
-    OP_RET,//Max you can return is 16 values or less
+    OP_EXTERN_CALL_PTR,//Takes in a pointer(immediate pointer) to the function. The ptr can be from DL_OPEN or injected by the compiler
+    OP_RET,//Can return maximum of 16 values at once
  
     
     /* ---- Heap objects: arrays ---------------------------------------------*/
@@ -172,19 +175,19 @@ enum class Opcode:std::uint8_t{
     OP_PTR_REALLOC_I64_I64_II64, //First parameter is the new length, Second parameter is the new capacity,Third parameter is size of each element(No of element allocated is capacity*element size)
     OP_FREE_PTR, 
 
-    OP_I64_GET_PTR_I64,//dest = *(a+b*scale) (not bounds-checked)
-    OP_FLOAT_GET_PTR_I64,//dest = *(a+b*scale) (not bounds-checked)
-    OP_PTR_GET_PTR_I64,//dest = *(a+b*scale) (not bounds-checked)
+    OP_I64_GET_PTR_I64,//dest = *(a+b*scale) (bounds-checked). If offset < 0 then it losses this bound check
+    OP_FLOAT_GET_PTR_I64,//dest = *(a+b*scale) (bounds-checked). If offset < 0 then it losses this bound check
+    OP_PTR_GET_PTR_I64,//dest = *(a+b*scale) (bounds-checked). If offset < 0 then it losses this bound check
 
-    OP_I64_GET_PTR_II64,//dest = *(a+b*scale) (not bounds-checked)
-    OP_FLOAT_GET_PTR_II64,//dest = *(a+b*scale) (not bounds-checked)
-    OP_PTR_GET_PTR_II64,//dest = *(a+b*scale) (not bounds-checked)
+    OP_I64_GET_PTR_II64,//dest = *(a+b*scale) (bounds-checked). If offset < 0 then it losses this bound check
+    OP_FLOAT_GET_PTR_II64,//dest = *(a+b*scale) (bounds-checked). If offset < 0 then it losses this bound check
+    OP_PTR_GET_PTR_II64,//dest = *(a+b*scale) (bounds-checked). If offset < 0 then it losses this bound check
 
-    OP_PTR_PTROFFSET_ADD_PTR_I64,//dest = a + b*scale (pointer arithmetic, b is number of element)
-    OP_PTR_PTROFFSET_SUB_PTR_I64,//dest = a + b*scale (pointer arithmetic, b is number of element)
+    OP_PTR_PTROFFSET_ADD_PTR_I64,//dest = a + b*scale (pointer arithmetic, b is number of element. Bound checked. Capacity set to 0 if out of range). If offset < 0 then it losses this bound check
+    OP_PTR_PTROFFSET_ADD_PTR_II64,//dest = a + b*scale (pointer arithmetic, b is number of element. Bound checked. Capacity set to 0 if out of range). If offset < 0 then it losses this bound check
+    OP_PTR_PTROFFSET_SUB_PTR_I64,//dest = a - b*scale (pointer arithmetic, b is number of element. Bound checked. Capacity set to 0 if out of range). If offset < 0 then it losses this bound check
 
-    OP_PTR_PTROFFSET_ADD_PTR_II64,//dest = a + b*scale (pointer arithmetic, b is number of element)
-
+    //If missing or out of range then we do nothing
     OP_SET_PTR_I64_I64FLOAT,//*(a+b*scale) = c. The second item is the offset in bytes. Both float and int are 64 bits and SET basically writes those bits. SO dont matter
     OP_SET_PTR_I64_PTR,//*(a+b*scale) = c. The second item is the offset in bytes
 
@@ -194,6 +197,9 @@ enum class Opcode:std::uint8_t{
     OP_I64_LEN_PTR,//dest = length(a)
     OP_I64_CAP_PTR,//dest = capacity(a)
     OP_I64_ELM_SIZE_PTR,//dest = size of each element in bytes
+    //For push and pop, if the pointer is from pointer offset then that is treated as a new array and the length and capacity starts from the remaining length and capacity.
+    //SO keep it in mind cuz push or pop on the pointer offset will not change the length and capacity of the original array. 
+    //It will only change the length and capacity of the pointer offset array
     OP_POP_PTR_I64,//POP the number of elements specified by the second argument
     OP_PUSH_PTR_PTR_I64,//PUSH the number of elements specified by the second argument
     OP_PUSH_PTR_I64FLOAT,//PUSH 164 or FLOAT value to the end of the array. The second argument is the value to be pushed
@@ -207,11 +213,6 @@ enum class Opcode:std::uint8_t{
     // OP_DL_CLOSE_PTR,
     // OP_PTR_DL_GET_FUNC_PTR_PTR,//Takens in a string ptr and the ptr to the library u get from DL_OPEN. Returns the function pointer
  
-    /* ---- GC cooperation ---------------------------------------------------
-     * Explicit safepoint the compiler can emit inside long straight-line
-     * loops that contain no calls/allocations, so a host GC still gets a
-     * chance to run. A no-op if no GC hook is installed. */
-    OP_GC_SAFEPOINT,
 
     /*----Time series related--------------------------------------
      *These are not strictly related to time series but will be used there most*/
@@ -229,6 +230,9 @@ enum class Opcode:std::uint8_t{
     OP_NOP,//Does nothing, useful for padding or reserved space
     OP_HALT,// stop execution, return to host. Must be last instruction in the program. Returns -1 to host as a sign of successful execution
     OP_TRAP,// stop execution, return to host and give index at with trap occurred. Helps with creating a traceback
+    OP_IF_TRUE_TRAP,// stop execution, return to host and give index at with trap occurred if the value in the register is true. Helps with creating a traceback. Also traps if the condition is missing
+    OP_IF_MISSING_TRAP,// stop execution, return to host and give index at with trap occurred if the value in the register is missing. Helps with creating a traceback 
+    OP_TRACE,// Dont stop execution but add the pc of this instruction to the path vector. Helps with creating a traceback
 
     OP_OPCODE_COUNT    /* keep last: total opcode count, sizes dispatch tables */
 };
