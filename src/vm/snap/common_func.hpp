@@ -4,6 +4,19 @@
 #include <cstdlib>
 #include "stream_macros.hpp"
 namespace Hazel{
+static inline std::int64_t __attribute__((hot)) fixed_point_float_mul_trunc(std::int64_t a, std::int64_t b) {
+    __int128 product = static_cast<__int128>(a) * static_cast<__int128>(b);
+    return static_cast<std::int64_t>(product / FIXED_POINT_FLOAT_SCALING_FACTOR);
+}
+
+static inline std::int64_t __attribute__((hot)) fixed_point_float_mul_round(std::int64_t a, std::int64_t b) {
+    __int128 product = static_cast<__int128>(a) * static_cast<__int128>(b);
+    __int128 result = (product >= 0)
+                        ? (product + FIXED_POINT_FLOAT_SCALING_FACTOR / 2) / FIXED_POINT_FLOAT_SCALING_FACTOR
+                        : (product - FIXED_POINT_FLOAT_SCALING_FACTOR / 2) / FIXED_POINT_FLOAT_SCALING_FACTOR;
+    return static_cast<std::int64_t>(result);
+}
+
 static inline std::int64_t __attribute__((hot)) is_in_range_with_step(std::int64_t n, std::int64_t low, std::int64_t high, std::int64_t step) {
     if (step == 0) {
         return (low == high) && (n == low);

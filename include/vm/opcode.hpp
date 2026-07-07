@@ -169,10 +169,10 @@ enum class Opcode:std::uint8_t{
     OP_RET,//Can return maximum of 16 values at once
  
     
-    /* ---- Heap objects: arrays ---------------------------------------------*/
+    /* ---- Heap objects ---------------------------------------------*/
     //ALLOC,REALLOC,FREE is managed by the GC or just malloc/free
-    OP_PTR_ALLOC_I64_I64_II64, //First parameter is the length(i.e non empty),second parameter is the capacity,third parameter is size of each element in bytes(No of element allocated is capacity*element size)
-    OP_PTR_REALLOC_I64_I64_II64, //First parameter is the new length, Second parameter is the new capacity,Third parameter is size of each element(No of element allocated is capacity*element size)
+    OP_PTR_ALLOC_I64_I64_II64, //First parameter is the length(i.e non empty),second parameter is the capacity,third parameter is size of each element in bytes(No of element allocated is capacity*element size). Pointer set to missing if they fail
+    OP_PTR_REALLOC_PTR_I64_I64_II64, //First parameter is the pointer to the existing array, Second parameter is the new length, Third parameter is the new capacity,Forth parameter is size of each element(No of element allocated is capacity*element size). Pointer set to missing if they fail. Note:-If fails then the old pointer is still valid so be careful
     OP_FREE_PTR, 
 
     OP_I64_GET_PTR_I64,//dest = *(a+b*scale) (bounds-checked). If offset < 0 then it losses this bound check
@@ -201,8 +201,8 @@ enum class Opcode:std::uint8_t{
     //SO keep it in mind cuz push or pop on the pointer offset will not change the length and capacity of the original array. 
     //It will only change the length and capacity of the pointer offset array
     OP_POP_PTR_I64,//POP the number of elements specified by the second argument
-    OP_PUSH_PTR_PTR_I64,//PUSH the number of elements specified by the second argument
-    OP_PUSH_PTR_I64FLOAT,//PUSH 164 or FLOAT value to the end of the array. The second argument is the value to be pushed
+    OP_PUSH_PTR_PTR_I64_II64,//PUSH the number of elements specified by the third argument. Last item is the number by which to increase capacity if needed
+    OP_PUSH_PTR_I64FLOAT_II64,//PUSH 164 or FLOAT value to the end of the array. The third argument is the value to be pushed. Last item is the number by which to increase capacity if needed
     OP_MEMCPY_PTR_PTR_I64,//dest = memcpy(a,b,c) where c is the number of bytes to copy
     OP_MEMMOVE_PTR_PTR_I64,//dest = memmove(a,b,c) where c is the number of bytes to copy
     OP_I64_UNSIGNED_CMP_PTR_PTR_I64,//dest = memcmp(a,b,c) where c is the number of bytes to compare. Either negative, zero or positive value is returned based on the comparison

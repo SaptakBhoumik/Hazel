@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <algorithm>
+#include <cstring>
 #include "common_func.hpp"
 
 namespace Hazel{
@@ -28,7 +29,54 @@ namespace Snap{
 //We revert the changes when we return. So we dont need to offset again and again when we access
 static std::uint64_t __attribute__((noinline, cold)) execute_cold_inst(std::uint64_t pc, StreamValue* code, StreamValue* frame_buffer, std::int64_t* traceback_func_loc_idx,
                                                               std::int64_t* func_call_loc_idx, std::int64_t* func_stack_size) noexcept{
-    //TODO:Ik it doesnt have dispatch and stuff so dont worry
+    void* dispatch[(std::uint64_t)Opcode::OP_OPCODE_COUNT];
+    /* ---- Other Arithmetic Instructions ------- */
+    INSERT(OP_I64_WEIGHTED_ADD_II64_I64_REG_WEIGHT); INSERT(OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOAT_REG_WEIGHT); INSERT(OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOAT_REG_WEIGHT); 
+    INSERT(OP_I64_WEIGHTED_ADD_II64_II64_REG_WEIGHT); INSERT(OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOATI_REG_WEIGHT); INSERT(OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOATI_REG_WEIGHT); 
+    INSERT(OP_I64_WEIGHTED_ADD_II64_I64_IMM_WEIGHT); INSERT(OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOAT_IMM_WEIGHT); INSERT(OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOAT_IMM_WEIGHT); 
+    INSERT(OP_I64_WEIGHTED_ADD_II64_II64_IMM_WEIGHT); INSERT(OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOATI_IMM_WEIGHT); INSERT(OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOATI_IMM_WEIGHT);
+
+
+    /* ---- Unary Instruction ------------------*/
+    INSERT(OP_I64FLOAT_ABS_I64FLOAT);
+    INSERT(OP_FLOAT_CEIL_FLOAT);
+    INSERT(OP_FLOAT_FLOOR_FLOAT);
+    INSERT(OP_FLOAT_INTEGRAL_PART_FLOAT);
+    INSERT(OP_FLOAT_FRACTIONAL_PART_FLOAT);
+    INSERT(OP_FLOAT_ROUNDNEAREST_FLOAT);
+    INSERT(OP_FLOAT_ROUNDEVEN_FLOAT);
+    INSERT(OP_FLOAT_SQRT_FLOAT);
+
+    /* ---- Heap objects ---------------------------------------------*/
+    INSERT(OP_PTR_ALLOC_I64_I64_II64);
+    INSERT(OP_PTR_REALLOC_PTR_I64_I64_II64); 
+    INSERT(OP_FREE_PTR); 
+    INSERT(OP_POP_PTR_I64);
+    INSERT(OP_PUSH_PTR_PTR_I64);
+    INSERT(OP_PUSH_PTR_I64FLOAT);
+    INSERT(OP_MEMCPY_PTR_PTR_I64);
+    INSERT(OP_MEMMOVE_PTR_PTR_I64);
+    INSERT(OP_I64_UNSIGNED_CMP_PTR_PTR_I64);
+
+    goto *dispatch[(std::uint64_t)code[pc].value];
+    /* ---- Other Arithmetic Instructions ------- */
+    OP_SIMPLE_COLD_REDUCED_ADD_INST(OP_I64_WEIGHTED_ADD_II64_I64_REG_WEIGHT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], weight.value*arg.value); 
+    OP_SIMPLE_COLD_REDUCED_ADD_INST(OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOAT_REG_WEIGHT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], fixed_point_float_mul_trunc(arg.value, weight.value)); 
+    OP_SIMPLE_COLD_REDUCED_ADD_INST(OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOAT_REG_WEIGHT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], fixed_point_float_mul_round(arg.value, weight.value)); 
+
+    OP_SIMPLE_COLD_REDUCED_ADD_INST(OP_I64_WEIGHTED_ADD_II64_II64_REG_WEIGHT, code[++pc], frame_buffer[code[++pc].value], weight.value*arg.value); 
+    OP_SIMPLE_COLD_REDUCED_ADD_INST(OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOATI_REG_WEIGHT, code[++pc], frame_buffer[code[++pc].value], fixed_point_float_mul_trunc(arg.value, weight.value)); 
+    OP_SIMPLE_COLD_REDUCED_ADD_INST(OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOATI_REG_WEIGHT, code[++pc], frame_buffer[code[++pc].value], fixed_point_float_mul_round(arg.value, weight.value)); 
+
+    OP_SIMPLE_COLD_REDUCED_ADD_INST(OP_I64_WEIGHTED_ADD_II64_I64_IMM_WEIGHT, frame_buffer[code[++pc].value], code[++pc], weight.value*arg.value); 
+    OP_SIMPLE_COLD_REDUCED_ADD_INST(OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOAT_IMM_WEIGHT, frame_buffer[code[++pc].value], code[++pc], fixed_point_float_mul_trunc(arg.value, weight.value)); 
+    OP_SIMPLE_COLD_REDUCED_ADD_INST(OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOAT_IMM_WEIGHT, frame_buffer[code[++pc].value], code[++pc], fixed_point_float_mul_round(arg.value, weight.value)); 
+
+    OP_SIMPLE_COLD_REDUCED_ADD_INST(OP_I64_WEIGHTED_ADD_II64_II64_IMM_WEIGHT, code[++pc], code[++pc], weight.value*arg.value); 
+    OP_SIMPLE_COLD_REDUCED_ADD_INST(OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOATI_IMM_WEIGHT, code[++pc], code[++pc], fixed_point_float_mul_trunc(arg.value, weight.value));
+    OP_SIMPLE_COLD_REDUCED_ADD_INST(OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOATI_IMM_WEIGHT, code[++pc], code[++pc], fixed_point_float_mul_round(arg.value, weight.value));
+
+    /* ---- Unary Instruction ------------------*/
     OP_SIMPLE_COLD_UNARY_INST(OP_I64FLOAT_ABS_I64FLOAT, frame_buffer[code[++pc].value], arg.type, std::abs(arg.value), arg.is_missing);
     OP_SIMPLE_COLD_UNARY_INST(OP_FLOAT_CEIL_FLOAT, frame_buffer[code[++pc].value], ValueType::VT_FLOAT, fixed_point_ceil(arg.value), arg.is_missing);
     OP_SIMPLE_COLD_UNARY_INST(OP_FLOAT_FLOOR_FLOAT, frame_buffer[code[++pc].value], ValueType::VT_FLOAT, fixed_point_floor(arg.value), arg.is_missing);
@@ -37,6 +85,113 @@ static std::uint64_t __attribute__((noinline, cold)) execute_cold_inst(std::uint
     OP_SIMPLE_COLD_UNARY_INST(OP_FLOAT_ROUNDNEAREST_FLOAT, frame_buffer[code[++pc].value], ValueType::VT_FLOAT, fixed_point_roundnearest(arg.value), arg.is_missing);
     OP_SIMPLE_COLD_UNARY_INST(OP_FLOAT_ROUNDEVEN_FLOAT, frame_buffer[code[++pc].value], ValueType::VT_FLOAT, fixed_point_roundeven(arg.value), arg.is_missing);
     OP_SIMPLE_COLD_UNARY_INST(OP_FLOAT_SQRT_FLOAT, frame_buffer[code[++pc].value], ValueType::VT_FLOAT, fixed_point_sqrt(arg.value), arg.is_missing);
+
+    /* ---- Heap objects ---------------------------------------------*/
+    _L_OP_PTR_ALLOC_I64_I64_II64:{
+        const auto length = frame_buffer[code[++pc].value];
+        const auto capacity = frame_buffer[code[++pc].value];
+        const auto element_size = frame_buffer[code[++pc].value];
+        const auto result_ptr = frame_buffer + code[++pc].value;
+        result_ptr->type = ValueType::VT_PTR;
+        result_ptr->is_missing = length.is_missing || capacity.is_missing || element_size.is_missing;
+        if(result_ptr->is_missing){
+            result_ptr->value = 0;
+            result_ptr->capacity = 0;
+            result_ptr->length = 0;
+            result_ptr->element_size = 0;
+        }
+        else{
+            result_ptr->value = (std::int64_t)malloc(capacity.value*element_size.value);
+            if(result_ptr->value == 0){
+                result_ptr->is_missing = true;
+                result_ptr->capacity = 0;
+                result_ptr->length = 0;
+                result_ptr->element_size = 0;
+            }
+            result_ptr->capacity = capacity.value;
+            result_ptr->length = length.value;
+            result_ptr->element_size = element_size.value;
+        }
+        return pc;
+    }
+    _L_OP_PTR_REALLOC_PTR_I64_I64_II64:{
+        const auto ptr = frame_buffer[code[++pc].value];
+        const auto new_length = frame_buffer[code[++pc].value];
+        const auto new_capacity = frame_buffer[code[++pc].value];
+        const auto element_size = frame_buffer[code[++pc].value];
+        const auto result_ptr = frame_buffer + code[++pc].value;
+        result_ptr->type = ValueType::VT_PTR;
+        result_ptr->is_missing = ptr.is_missing || new_length.is_missing || new_capacity.is_missing || element_size.is_missing;
+        if(result_ptr->is_missing){
+            result_ptr->value = 0;
+            result_ptr->capacity = 0;
+            result_ptr->length = 0;
+            result_ptr->element_size = 0;
+        }
+        else{
+            result_ptr->value = (std::int64_t)realloc((void*)ptr.value, new_capacity.value*element_size.value);
+            if(result_ptr->value == 0){
+                result_ptr->is_missing = true;
+                result_ptr->capacity = 0;
+                result_ptr->length = 0;
+                result_ptr->element_size = 0;
+            }
+            result_ptr->capacity = new_capacity.value;
+            result_ptr->length = new_length.value;
+            result_ptr->element_size = element_size.value;
+        }
+        return pc;
+    }
+    _L_OP_FREE_PTR:{
+        const auto ptr = frame_buffer[code[++pc].value];
+        if(!ptr.is_missing && ptr.value != 0){
+            free((void*)ptr.value);
+        }
+        return pc;
+    }
+    _L_OP_POP_PTR_I64:{
+        const auto ptr = frame_buffer + code[++pc].value;
+        const auto num_elements = frame_buffer[code[++pc].value];
+        if(!ptr->is_missing && !num_elements.is_missing && num_elements.value > 0){
+            ptr->length = std::max<std::int64_t>(0, ptr->length - num_elements.value);
+        }
+        return pc;
+    }
+    INSERT(OP_PUSH_PTR_PTR_I64);
+    INSERT(OP_PUSH_PTR_I64FLOAT);
+    _L_OP_MEMCPY_PTR_PTR_I64:{
+        const auto dest = frame_buffer[code[++pc].value];
+        const auto src = frame_buffer[code[++pc].value];
+        const auto num_bytes = frame_buffer[code[++pc].value];
+        if(!dest.is_missing && !src.is_missing && num_bytes.value > 0){
+            memcpy((void*)dest.value, (void*)src.value, num_bytes.value*dest.element_size);
+        }
+        return pc;
+    }
+    _L_OP_MEMMOVE_PTR_PTR_I64:{
+        const auto dest = frame_buffer[code[++pc].value];
+        const auto src = frame_buffer[code[++pc].value];
+        const auto num_bytes = frame_buffer[code[++pc].value];
+        if(!dest.is_missing && !src.is_missing && num_bytes.value > 0){
+            memmove((void*)dest.value, (void*)src.value, num_bytes.value*dest.element_size);
+        }
+        return pc;
+    }
+    _L_OP_I64_UNSIGNED_CMP_PTR_PTR_I64:{
+        const auto dest = frame_buffer[code[++pc].value];
+        const auto src = frame_buffer[code[++pc].value];
+        const auto num_bytes = frame_buffer[code[++pc].value];
+        const auto result = frame_buffer + code[++pc].value;
+        result->type = ValueType::VT_I64;
+        result->is_missing = dest.is_missing || src.is_missing || num_bytes.is_missing;
+        if(result->is_missing){
+            result->value = 0;
+        }
+        else{
+            result->value = (std::int64_t)memcmp((void*)dest.value, (void*)src.value, num_bytes.value*dest.element_size);
+        }
+        return pc;
+    }
 }
 //path is the array of pc values where we want to trace the execution via OP_TRACE. It is used for debugging
 std::int64_t execute_stream_vm(StreamValue* code, StreamValue* frame_buffer, std::int64_t* traceback_func_loc_idx,
@@ -140,7 +295,7 @@ std::int64_t execute_stream_vm(StreamValue* code, StreamValue* frame_buffer, std
  
     /* ---- Heap objects: arrays ---------------------------------------------*/
     INSERT_COLD(OP_PTR_ALLOC_I64_I64_II64);
-    INSERT_COLD(OP_PTR_REALLOC_I64_I64_II64); 
+    INSERT_COLD(OP_PTR_REALLOC_PTR_I64_I64_II64); 
     INSERT_COLD(OP_FREE_PTR); 
 
     INSERT(OP_I64_GET_PTR_I64);

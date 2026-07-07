@@ -25,16 +25,6 @@
                                                         DISPATCH();\
                                                     }
 
-/* ---- Trinary Arithmetic Instructions ------- */
-#define OP_SIMPLE_FMA_INST(_op, _lhs, _rhs, _expr) _L_##_op:{\
-                                                        const auto lhs = _lhs;\
-                                                        const auto rhs = _rhs;\
-                                                        const auto ptr = frame_buffer + code[++pc].value;\
-                                                        ptr->type = lhs.type;\
-                                                        ptr->is_missing = lhs.is_missing || rhs.is_missing;\
-                                                        ptr->value = _expr;\
-                                                        DISPATCH();\
-
 #define OP_SIMPLE_DIV_REM_INST(_op, _lhs, _rhs, _expr) _L_##_op:{\
                                                         const auto lhs = _lhs;\
                                                         const auto rhs = _rhs;\
@@ -55,6 +45,26 @@
                                                         ptr->value = ptr->is_missing ? 0 : _expr;\
                                                         DISPATCH();\
                                                     }
+
+/* ---- Other Arithmetic Instructions ------- */
+#define OP_SIMPLE_COLD_REDUCED_ADD_INST(_op, _acc, _weight, _mul_expr) _L_##_op:{\
+                                                                const auto loop_count = code[++pc].value;\
+                                                                const auto acc = _acc;\
+                                                                bool is_missing = acc.is_missing;\
+                                                                std::int64_t value = acc.value;\
+                                                                for(std::int64_t i = 0; i < loop_count; i++){\
+                                                                    const auto weight = _weight;\
+                                                                    const auto arg = frame_buffer[code[++pc].value];\
+                                                                    value += _mul_expr;\
+                                                                    is_missing |= weight.is_missing;\
+                                                                }\
+                                                                const auto ptr = frame_buffer + code[++pc].value;\
+                                                                ptr->type = acc.type;\
+                                                                ptr->is_missing = is_missing;\
+                                                                ptr->value = value;\
+                                                                return pc;\
+                                                            }
+
 
 /* ---- Comparison Instruction ------------------*/
 #define OP_SIMPLE_CMP_BINARY_INST(_op, _lhs, _rhs, _expr) _L_##_op:{\
