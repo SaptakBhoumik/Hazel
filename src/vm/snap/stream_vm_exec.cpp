@@ -28,6 +28,7 @@ namespace Snap{
 //We revert the changes when we return. So we dont need to offset again and again when we access
 static std::uint64_t __attribute__((noinline, cold)) execute_cold_inst(std::uint64_t pc, StreamValue* code, StreamValue* frame_buffer, std::int64_t* traceback_func_loc_idx,
                                                               std::int64_t* func_call_loc_idx, std::int64_t* func_stack_size) noexcept{
+    //TODO:Ik it doesnt have dispatch and stuff so dont worry
     OP_SIMPLE_COLD_UNARY_INST(OP_I64FLOAT_ABS_I64FLOAT, frame_buffer[code[++pc].value], arg.type, std::abs(arg.value), arg.is_missing);
     OP_SIMPLE_COLD_UNARY_INST(OP_FLOAT_CEIL_FLOAT, frame_buffer[code[++pc].value], ValueType::VT_FLOAT, fixed_point_ceil(arg.value), arg.is_missing);
     OP_SIMPLE_COLD_UNARY_INST(OP_FLOAT_FLOOR_FLOAT, frame_buffer[code[++pc].value], ValueType::VT_FLOAT, fixed_point_floor(arg.value), arg.is_missing);
@@ -55,20 +56,20 @@ std::int64_t execute_stream_vm(StreamValue* code, StreamValue* frame_buffer, std
     INSERT(OP_I64FLOAT_ADD_I64FLOAT_I64FLOAT);
     INSERT(OP_I64FLOAT_SUB_I64FLOAT_I64FLOAT);
     INSERT(OP_I64_MUL_I64_I64); INSERT(OP_FLOAT_MUL_TRUNC_FLOAT_FLOAT); INSERT(OP_FLOAT_MUL_ROUND_FLOAT_FLOAT);
-    INSERT(OP_I64FLOAT_DIV_I64FLOAT_I64FLOAT);
+    INSERT(OP_I64_DIV_I64_I64); INSERT(OP_FLOAT_DIV_FLOAT_FLOAT);
     INSERT(OP_I64FLOAT_REM_I64FLOAT_I64FLOAT);
     INSERT(OP_I64FLOAT_MIN_I64FLOAT_I64FLOAT);
     INSERT(OP_I64FLOAT_MAX_I64FLOAT_I64FLOAT);
 
     INSERT(OP_I64FLOAT_ADD_I64FLOAT_I64FLOATI);
     INSERT(OP_I64_MUL_I64_II64); INSERT(OP_FLOAT_MUL_TRUNC_FLOAT_FLOATI); INSERT(OP_FLOAT_MUL_ROUND_FLOAT_FLOATI);
-    INSERT(OP_I64FLOAT_DIV_I64FLOAT_I64FLOATI);
+    INSERT(OP_I64_DIV_I64_II64); INSERT(OP_FLOAT_DIV_FLOAT_FLOATI);
     INSERT(OP_I64FLOAT_REM_I64FLOAT_I64FLOATI);
     INSERT(OP_I64FLOAT_MAX_I64FLOAT_I64FLOATI);
     INSERT(OP_I64FLOAT_MIN_I64FLOAT_I64FLOATI);
 
     INSERT(OP_I64FLOAT_SUB_I64FLOATI_I64FLOAT);
-    INSERT(OP_I64FLOAT_DIV_I64FLOATI_I64FLOAT);
+    INSERT(OP_I64_DIV_II64_I64); INSERT(OP_FLOAT_DIV_FLOATI_FLOAT);
     INSERT(OP_I64FLOAT_REM_I64FLOATI_I64FLOAT);
 
     /* ---- Other Arithmetic Instructions ------- */
@@ -233,7 +234,9 @@ std::int64_t execute_stream_vm(StreamValue* code, StreamValue* frame_buffer, std
         ptr->is_missing = lhs.is_missing || rhs.is_missing;
         DISPATCH();
     }
-    OP_SIMPLE_DIV_REM_INST(OP_I64FLOAT_DIV_I64FLOAT_I64FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value / rhs.value);
+    OP_SIMPLE_DIV_REM_INST(OP_I64_DIV_I64_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value / rhs.value);
+    OP_SIMPLE_FLOAT_DIV_INST(OP_FLOAT_DIV_FLOAT_FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], 
+                            static_cast<int64_t>(static_cast<__int128>(lhs.value) * FIXED_POINT_FLOAT_SCALING_FACTOR) / static_cast<__int128>(rhs.value));
     OP_SIMPLE_DIV_REM_INST(OP_I64FLOAT_REM_I64FLOAT_I64FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value % rhs.value);
     OP_SIMPLE_BINARY_INST(OP_I64FLOAT_MIN_I64FLOAT_I64FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], std::min(lhs.value, rhs.value));
     OP_SIMPLE_BINARY_INST(OP_I64FLOAT_MAX_I64FLOAT_I64FLOAT, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], std::max(lhs.value, rhs.value));
@@ -241,7 +244,7 @@ std::int64_t execute_stream_vm(StreamValue* code, StreamValue* frame_buffer, std
     OP_SIMPLE_BINARY_INST(OP_I64FLOAT_ADD_I64FLOAT_I64FLOATI, frame_buffer[code[++pc].value], code[++pc], lhs.value + rhs.value);
     OP_SIMPLE_BINARY_INST(OP_I64_MUL_I64_II64, frame_buffer[code[++pc].value], code[++pc], lhs.value * rhs.value);
     OP_SIMPLE_BINARY_INST(OP_FLOAT_MUL_TRUNC_FLOAT_FLOATI, frame_buffer[code[++pc].value], code[++pc], 
-                          static_cast<int64_t>((static_cast<__int128>(lhs.value) * static_cast<__int128>(rhs.value)) / FIXED_POINT_FLOAT_SCALING_FACTOR));
+                          static_cast<int64_t>((static_cast<__int128>(lhs.value) * FIXED_POINT_FLOAT_SCALING_FACTOR) / static_cast<__int128>(rhs.value)));
     _L_OP_FLOAT_MUL_ROUND_FLOAT_FLOATI:{
         const auto lhs = frame_buffer[code[++pc].value];
         const auto rhs = code[++pc];
@@ -255,18 +258,22 @@ std::int64_t execute_stream_vm(StreamValue* code, StreamValue* frame_buffer, std
         ptr->is_missing = lhs.is_missing || rhs.is_missing;
         DISPATCH();
     }
-    OP_SIMPLE_DIV_REM_INST(OP_I64FLOAT_DIV_I64FLOAT_I64FLOATI, frame_buffer[code[++pc].value], code[++pc], lhs.value / rhs.value);
+    OP_SIMPLE_DIV_REM_INST(OP_I64_DIV_I64_II64, frame_buffer[code[++pc].value], code[++pc], lhs.value / rhs.value);
+    OP_SIMPLE_FLOAT_DIV_INST(OP_FLOAT_DIV_FLOAT_FLOATI, frame_buffer[code[++pc].value], code[++pc], 
+                             static_cast<int64_t>((static_cast<__int128>(lhs.value) * FIXED_POINT_FLOAT_SCALING_FACTOR) / static_cast<__int128>(rhs.value)));
     OP_SIMPLE_DIV_REM_INST(OP_I64FLOAT_REM_I64FLOAT_I64FLOATI, frame_buffer[code[++pc].value], code[++pc], lhs.value % rhs.value);
-    OP_SIMPLE_BINARY_INST(OP_I64FLOAT_MAX_I64FLOAT_I64FLOATI, frame_buffer[code[++pc].value], code[++pc], std::min(lhs.value, rhs.value));
-    OP_SIMPLE_BINARY_INST(OP_I64FLOAT_MIN_I64FLOAT_I64FLOATI, frame_buffer[code[++pc].value], code[++pc], std::max(lhs.value, rhs.value));
+    OP_SIMPLE_BINARY_INST(OP_I64FLOAT_MIN_I64FLOAT_I64FLOATI, frame_buffer[code[++pc].value], code[++pc], std::min(lhs.value, rhs.value));
+    OP_SIMPLE_BINARY_INST(OP_I64FLOAT_MAX_I64FLOAT_I64FLOATI, frame_buffer[code[++pc].value], code[++pc], std::max(lhs.value, rhs.value));
 
     OP_SIMPLE_BINARY_INST(OP_I64FLOAT_SUB_I64FLOATI_I64FLOAT, code[++pc], frame_buffer[code[++pc].value], lhs.value - rhs.value);
-    OP_SIMPLE_DIV_REM_INST(OP_I64FLOAT_DIV_I64FLOATI_I64FLOAT, code[++pc], frame_buffer[code[++pc].value], std::min(lhs.value, rhs.value));
-    OP_SIMPLE_DIV_REM_INST(OP_I64FLOAT_REM_I64FLOATI_I64FLOAT, code[++pc], frame_buffer[code[++pc].value], std::max(lhs.value, rhs.value));
+    OP_SIMPLE_DIV_REM_INST(OP_I64_DIV_II64_I64, code[++pc], frame_buffer[code[++pc].value], lhs.value / rhs.value);
+    OP_SIMPLE_FLOAT_DIV_INST(OP_FLOAT_DIV_FLOATI_FLOAT, code[++pc], frame_buffer[code[++pc].value], 
+                             static_cast<int64_t>((static_cast<__int128>(lhs.value) * FIXED_POINT_FLOAT_SCALING_FACTOR) / static_cast<__int128>(rhs.value)));
+    OP_SIMPLE_DIV_REM_INST(OP_I64FLOAT_REM_I64FLOATI_I64FLOAT, code[++pc], frame_buffer[code[++pc].value], lhs.value % rhs.value);
 
     /* ---- Binary Bitwise Instructions ----------- */
-    OP_SIMPLE_BINARY_INST(OP_I64_BIT_AND_I64_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value && rhs.value);
-    OP_SIMPLE_BINARY_INST(OP_I64_BIT_OR_I64_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value || rhs.value);
+    OP_SIMPLE_BINARY_INST(OP_I64_BIT_AND_I64_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value & rhs.value);
+    OP_SIMPLE_BINARY_INST(OP_I64_BIT_OR_I64_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value | rhs.value);
     OP_SIMPLE_BINARY_INST(OP_I64_BIT_XOR_I64_I64, frame_buffer[code[++pc].value], frame_buffer[code[++pc].value], lhs.value ^ rhs.value);
     OP_SIMPLE_BINARY_INST(OP_I64_BIT_XOR_I64_II64, frame_buffer[code[++pc].value], code[++pc], lhs.value ^ rhs.value);
 

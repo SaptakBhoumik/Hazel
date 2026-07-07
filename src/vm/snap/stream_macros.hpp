@@ -45,6 +45,17 @@
                                                         DISPATCH();\
                                                     }
 
+#define OP_SIMPLE_FLOAT_DIV_INST(_op, _lhs, _rhs, _expr) _L_##_op:{\
+                                                        const auto lhs = _lhs;\
+                                                        const auto rhs = _rhs;\
+                                                        const auto ptr = frame_buffer + code[++pc].value;\
+                                                        ptr->type = lhs.type;\
+                                                        /*This operation happens in 128bit integer space. INT128_MIN can never happen if we multiply by 10000(too small) so no need to check*/\
+                                                        ptr->is_missing = lhs.is_missing || rhs.is_missing || rhs.value == 0;\
+                                                        ptr->value = ptr->is_missing ? 0 : _expr;\
+                                                        DISPATCH();\
+                                                    }
+
 /* ---- Comparison Instruction ------------------*/
 #define OP_SIMPLE_CMP_BINARY_INST(_op, _lhs, _rhs, _expr) _L_##_op:{\
                                                             const auto lhs = _lhs;\
@@ -151,13 +162,13 @@
                                                                 const auto result_ptr = frame_buffer + code[++pc].value;\
                                                                 result_ptr->type = ValueType::VT_PTR;\
                                                                 result_ptr->value = _expr;\
-                                                                result_ptr->capacity = std::max<std::int64_t>(0, ptr.capacity - offset.capacity*ptr.element_size);\
-                                                                result_ptr->length = std::max<std::int64_t>(0, ptr.length - offset.length*ptr.element_size);\
+                                                                result_ptr->capacity = std::max<std::int64_t>(0, ptr.capacity - offset.value*ptr.element_size);\
+                                                                result_ptr->length = std::max<std::int64_t>(0, ptr.length - offset.value*ptr.element_size);\
                                                                 result_ptr->element_size = ptr.element_size;\
                                                                 result_ptr->is_missing = ptr.is_missing || offset.is_missing;\
                                                                 DISPATCH();\
                                                             }
-                                                            
+
 #define OP_SIMPLE_SET_INT64FLOAT_INST(_op, _ptr, _offset, _value) _L_##_op:{\
                                                                       const auto ptr = _ptr;\
                                                                       const auto offset = _offset;\
