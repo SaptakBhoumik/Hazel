@@ -47,7 +47,7 @@
                                                     }
 
 /* ---- Other Arithmetic Instructions ------- */
-#define OP_SIMPLE_COLD_REDUCED_ADD_INST(_op, _acc, _weight, _mul_expr) _L_##_op:{\
+#define OP_SIMPLE_COLD_WEIGHED_ADD_INST(_op, _acc, _weight, _mul_expr) _L_##_op:{\
                                                                 const auto loop_count = code[++pc].value;\
                                                                 const auto acc = _acc;\
                                                                 bool is_missing = acc.is_missing;\
@@ -56,7 +56,7 @@
                                                                     const auto weight = _weight;\
                                                                     const auto arg = frame_buffer[code[++pc].value];\
                                                                     value += _mul_expr;\
-                                                                    is_missing |= weight.is_missing;\
+                                                                    is_missing |= weight.is_missing || arg.is_missing;\
                                                                 }\
                                                                 const auto ptr = frame_buffer + code[++pc].value;\
                                                                 ptr->type = acc.type;\
@@ -111,9 +111,9 @@
 #define OP_SIMPLE_BR_BINARY_CMP_INST(_op, _lhs, _rhs, _expr) _L_##_op:{\
                                                                 const auto lhs = _lhs;\
                                                                 const auto rhs = _rhs;\
-                                                                const auto label1 = frame_buffer[code[++pc].value].value;\
-                                                                const auto label2 = frame_buffer[code[++pc].value].value;\
-                                                                const auto label3 = frame_buffer[code[++pc].value].value;\
+                                                                const auto label1 = code[++pc].value;\
+                                                                const auto label2 = code[++pc].value;\
+                                                                const auto label3 = code[++pc].value;\
                                                                 if(_lhs.is_missing || _rhs.is_missing){GOTO(label3)}\
                                                                 else if(_expr){GOTO(label1)}\
                                                                 else{GOTO(label2)}\
@@ -124,15 +124,13 @@
                                                                                 const auto arg2 = _arg2;\
                                                                                 const auto arg3 = _arg3;\
                                                                                 const auto arg4 = _arg4;\
-                                                                                const auto label1 = frame_buffer[code[++pc].value].value;\
-                                                                                const auto label2 = frame_buffer[code[++pc].value].value;\
-                                                                                const auto label3 = frame_buffer[code[++pc].value].value;\
+                                                                                const auto label1 = code[++pc].value;\
+                                                                                const auto label2 = code[++pc].value;\
+                                                                                const auto label3 = code[++pc].value;\
                                                                                 if(_arg1.is_missing || _arg2.is_missing || _arg3.is_missing || _arg4.is_missing){GOTO(label3)}\
                                                                                 else if(_expr){GOTO(label1)}\
                                                                                 else{GOTO(label2)}\
                                                                             }
-
-/* ---- Calls --------------------------------------- */
 
 /* ---- Heap objects: arrays ---------------------------------------------*/
 #define OP_SIMPLE_GET_INT64FLOAT_INST(_op, _ptr, _offset, _vm_type) _L_##_op:{\
@@ -172,8 +170,8 @@
                                                                 const auto result_ptr = frame_buffer + code[++pc].value;\
                                                                 result_ptr->type = ValueType::VT_PTR;\
                                                                 result_ptr->value = _expr;\
-                                                                result_ptr->capacity = std::max<std::int64_t>(0, ptr.capacity - offset.value*ptr.element_size);\
-                                                                result_ptr->length = std::max<std::int64_t>(0, ptr.length - offset.value*ptr.element_size);\
+                                                                result_ptr->capacity = std::max<std::int64_t>(0, ptr.capacity - offset.value);\
+                                                                result_ptr->length = std::max<std::int64_t>(0, ptr.length - offset.value);\
                                                                 result_ptr->element_size = ptr.element_size;\
                                                                 result_ptr->is_missing = ptr.is_missing || offset.is_missing;\
                                                                 DISPATCH();\
@@ -183,7 +181,7 @@
                                                                       const auto ptr = _ptr;\
                                                                       const auto offset = _offset;\
                                                                       const auto value = _value;\
-                                                                      if(ptr.is_missing || offset.is_missing || offset.value >= ptr.length){DISPATCH()}\
+                                                                      if(ptr.is_missing || offset.is_missing || value.is_missing || offset.value >= ptr.length){DISPATCH()}\
                                                                       (*(int64_t*)(ptr.value + offset.value*ptr.element_size)) = value.value;\
                                                                       DISPATCH();\
                                                                   }
@@ -192,7 +190,7 @@
                                                                const auto ptr = _ptr;\
                                                                const auto offset = _offset;\
                                                                const auto value = _value;\
-                                                               if(ptr.is_missing || offset.is_missing || offset.value >= ptr.length){DISPATCH();}\
+                                                               if(ptr.is_missing || offset.is_missing || value.is_missing || offset.value >= ptr.length){DISPATCH();}\
                                                                const auto offset_ptr = (char*)(ptr.value + offset.value*ptr.element_size);\
                                                                *(int64_t*)offset_ptr = value.value;\
                                                                *(int64_t*)(offset_ptr + sizeof(std::int64_t)) = value.capacity;\
@@ -209,3 +207,30 @@
                                                             result_ptr->is_missing = ptr.is_missing;\
                                                             DISPATCH();\
                                                         }
+
+/*----Time series related--------------------------------------*/
+#define OP_SIMPLE_COLD_BINARY_FIND_TYPE1_INST(_op, _ptr, _start_idx, _size, _value, _expr, _missing_condition) _L_##_op:{\
+                                                                                                                   const auto ptr = _ptr;\
+                                                                                                                   const auto start_idx = _start_idx;\
+                                                                                                                   const auto size = _size;\
+                                                                                                                   const auto value = _value;\
+                                                                                                                   const auto result_ptr = frame_buffer + code[++pc].value;\
+                                                                                                                   result_ptr->type = ValueType::VT_I64;\
+                                                                                                                   result_ptr->is_missing = ptr.is_missing || start_idx.is_missing || size.is_missing || value.is_missing || start_idx.value >= ptr.length || start_idx.value*ptr.element_size + size.value*sizeof(std::int64_t) > ptr.length*ptr.element_size || size.value <= 0;\
+                                                                                                                   result_ptr->value = result_ptr->is_missing ? 0 : _expr;\
+                                                                                                                   result_ptr->is_missing |= _missing_condition;\
+                                                                                                                   return pc;\
+                                                                                                               }
+
+#define OP_SIMPLE_COLD_BINARY_FIND_TYPE2_INST(_op, _ptr, _start_idx, _value, _expr, _missing_condition) _L_##_op:{\
+                                                                                                            const auto ptr = _ptr;\
+                                                                                                            const auto start_idx = _start_idx;\
+                                                                                                            const auto size = ((_ptr.length - start_idx.value)*ptr.element_size)/sizeof(std::int64_t);\
+                                                                                                            const auto value = _value;\
+                                                                                                            const auto result_ptr = frame_buffer + code[++pc].value;\
+                                                                                                            result_ptr->type = ValueType::VT_I64;\
+                                                                                                            result_ptr->is_missing = ptr.is_missing || start_idx.is_missing || value.is_missing || start_idx.value >= ptr.length || start_idx.value*ptr.element_size + size*sizeof(std::int64_t) > ptr.length*ptr.element_size || size <= 0;\
+                                                                                                            result_ptr->value = result_ptr->is_missing ? 0 : _expr;\
+                                                                                                            result_ptr->is_missing |= _missing_condition;\
+                                                                                                            return pc;\
+                                                                                                        }

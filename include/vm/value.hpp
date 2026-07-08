@@ -11,7 +11,7 @@ enum class ValueType:std::uint8_t{
     VT_FLOAT,
     VT_PTR,
 };
-struct alignas(32) StreamValue{
+struct StreamValue{
     std::int64_t value = 0;//If i64 or fixed point float then interpreted as that. If ptr then interpreted as pointer(capacity, length and element size must be stored then)
                        //Reg means register number. Instruction means instruction number. Func_loc means function location in the bytecode. Label_loc means label location in the bytecode
     std::int64_t capacity = 0;

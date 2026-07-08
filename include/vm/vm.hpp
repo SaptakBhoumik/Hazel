@@ -8,6 +8,8 @@
 #include <cstdint>
 namespace Hazel{
 namespace Snap{
+using  ExternFuncType = void (*)(StreamValue* args, StreamValue** ret_value);//ret_value is pointer to the stack frame
+
 class StreamVM{
     std::vector<StreamValue> code;
     std::size_t frame_buffer_size;

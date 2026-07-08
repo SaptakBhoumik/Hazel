@@ -172,7 +172,7 @@ enum class Opcode:std::uint8_t{
     /* ---- Heap objects ---------------------------------------------*/
     //ALLOC,REALLOC,FREE is managed by the GC or just malloc/free
     OP_PTR_ALLOC_I64_I64_II64, //First parameter is the length(i.e non empty),second parameter is the capacity,third parameter is size of each element in bytes(No of element allocated is capacity*element size). Pointer set to missing if they fail
-    OP_PTR_REALLOC_PTR_I64_I64_II64, //First parameter is the pointer to the existing array, Second parameter is the new length, Third parameter is the new capacity,Forth parameter is size of each element(No of element allocated is capacity*element size). Pointer set to missing if they fail. Note:-If fails then the old pointer is still valid so be careful
+    OP_PTR_REALLOC_PTR_I64_I64, //First parameter is the pointer to the existing array, Second parameter is the new length, Third parameter is the new capacity. Pointer set to missing if they fail. Note:-If fails then the old pointer is still valid so be careful
     OP_FREE_PTR, 
 
     OP_I64_GET_PTR_I64,//dest = *(a+b*scale) (bounds-checked). If offset < 0 then it losses this bound check
@@ -201,10 +201,11 @@ enum class Opcode:std::uint8_t{
     //SO keep it in mind cuz push or pop on the pointer offset will not change the length and capacity of the original array. 
     //It will only change the length and capacity of the pointer offset array
     OP_POP_PTR_I64,//POP the number of elements specified by the second argument
-    OP_PUSH_PTR_PTR_I64_II64,//PUSH the number of elements specified by the third argument. Last item is the number by which to increase capacity if needed
-    OP_PUSH_PTR_I64FLOAT_II64,//PUSH 164 or FLOAT value to the end of the array. The third argument is the value to be pushed. Last item is the number by which to increase capacity if needed
-    OP_MEMCPY_PTR_PTR_I64,//dest = memcpy(a,b,c) where c is the number of bytes to copy
-    OP_MEMMOVE_PTR_PTR_I64,//dest = memmove(a,b,c) where c is the number of bytes to copy
+    OP_PUSH_PTR_PTR_I64_II64,//PUSH the number of elements specified by the third argument. Last item is the number by which to increase capacity if needed(Note if capacity is increased then the pointer may change so user must be careful)
+    OP_PUSH_PTR_I64FLOAT_II64,//PUSH 164 or FLOAT value to the end of the array. The third argument is the value to be pushed. Last item is the number by which to increase capacity if needed(Note if capacity is increased then the pointer may change so user must be careful)
+    OP_PUSH_PTR_PTR_VALUE_II64,//PUSH PTR value to the end of the array. The third argument is the value to be pushed. Last item is the number by which to increase capacity if needed(Note if capacity is increased then the pointer may change so user must be careful)
+    OP_MEMCPY_PTR_PTR_I64,//dest = memcpy(a,b,c) where c is the number of elements to copy(Assumes the size of each element is same as the size of each element of dest)
+    OP_MEMMOVE_PTR_PTR_I64,//dest = memmove(a,b,c) where c is the number of elements to copy(Assumes the size of each element is same as the size of each element of dest)
     OP_I64_UNSIGNED_CMP_PTR_PTR_I64,//dest = memcmp(a,b,c) where c is the number of bytes to compare. Either negative, zero or positive value is returned based on the comparison
     
     /* ---- FFI --------------------------------------------------*/
@@ -216,13 +217,18 @@ enum class Opcode:std::uint8_t{
 
     /*----Time series related--------------------------------------
      *These are not strictly related to time series but will be used there most*/
-    OP_I64_BINARY_FIND_GE_PTR_I64_I64FLOAT,  // index of first entry with value >= x (or "Missing" if no such entry exists). The second argument is the index at which to start
-    OP_I64_BINARY_FIND_LE_PTR_I64_I64FLOAT,  // index of last entry with value <= x (or "Missing" if no such entry exists). The second argument is the index at which to start
-    OP_I64_BINARY_FIND_GE_PTR_II64_I64FLOAT,//The index is often 0 so we allow them to just pass an immediate value with this
-    OP_I64_BINARY_FIND_LE_PTR_II64_I64FLOAT,//The index is often 0 so we allow them to just pass an immediate value with thisk
+    OP_I64_BINARY_FIND_GE_PTR_I64_I64_I64FLOAT,//index of first entry with value >= x (or "Missing" if no such entry exists). The second argument is the index at which to start. Third argument is the size
+    OP_I64_BINARY_FIND_LE_PTR_I64_I64_I64FLOAT,//index of last entry with value <= x (or "Missing" if no such entry exists). The second argument is the index at which to start. Third argument is the size
+    OP_I64_BINARY_FIND_GE_PTR_II64_I64_I64FLOAT,//The index is often 0 so we allow them to just pass an immediate value with this
+    OP_I64_BINARY_FIND_LE_PTR_II64_I64_I64FLOAT,//The index is often 0 so we allow them to just pass an immediate value with this
+
+    OP_I64_BINARY_FIND_GE_PTR_I64_I64FLOAT,//These dont take in size and considers the size of the element same as the size mentioned in the ptr
+    OP_I64_BINARY_FIND_LE_PTR_I64_I64FLOAT,//These dont take in size and considers the size of the element same as the size mentioned in the ptr
+    OP_I64_BINARY_FIND_GE_PTR_II64_I64FLOAT,//These dont take in size and considers the size of the element same as the size mentioned in the ptr
+    OP_I64_BINARY_FIND_LE_PTR_II64_I64FLOAT,//These dont take in size and considers the size of the element same as the size mentioned in the ptr
 
     /*-------Traceback--------------------------------*/
-    OP_PRINT_PTR,//Prints the string pointed by the pointer
+    OP_PRINT_PTR,//Prints the string pointed by the pointer. Note:-The IO is flushed after every print
     //Nothing else because how a language wants to do traceback is too diffrent to provide. It is better to let the language implement it themselves vis FFI
     //And in case a constraint is violated then the language is supposed to throw and exit anyways so if that process is slow then not a big of a deal
   
@@ -233,6 +239,8 @@ enum class Opcode:std::uint8_t{
     OP_IF_TRUE_TRAP,// stop execution, return to host and give index at with trap occurred if the value in the register is true. Helps with creating a traceback. Also traps if the condition is missing
     OP_IF_MISSING_TRAP,// stop execution, return to host and give index at with trap occurred if the value in the register is missing. Helps with creating a traceback 
     OP_TRACE,// Dont stop execution but add the pc of this instruction to the path vector. Helps with creating a traceback
+    OP_IF_TRUE_TRACE,
+    OP_IF_MISSING_TRACE,
 
     OP_OPCODE_COUNT    /* keep last: total opcode count, sizes dispatch tables */
 };
