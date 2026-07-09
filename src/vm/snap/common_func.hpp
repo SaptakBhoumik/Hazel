@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <algorithm>
-#include "stream_macros.hpp"
+#include "macros.hpp"
 
 namespace Hazel{
 static inline std::int64_t __attribute__((hot)) first_ge(const int64_t* arr, std::int64_t n, std::int64_t x) noexcept {

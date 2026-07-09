@@ -11,7 +11,7 @@ enum class ValueType:std::uint8_t{
     VT_FLOAT,
     VT_PTR,
 };
-struct StreamValue{
+struct Value{
     std::int64_t value = 0;//If i64 or fixed point float then interpreted as that. If ptr then interpreted as pointer(capacity, length and element size must be stored then)
                            //Reg means register number. Instruction means instruction number. Func_loc means function location in the bytecode. Label_loc means label location in the bytecode
                            //Note:We replace the value(which contains the instruction) with the address of the computed goto label. This value can contain the hot dispatch address if type == instruction
@@ -23,12 +23,11 @@ struct StreamValue{
     ValueType type = ValueType::VT_I64;
     bool is_missing = true;
 
-    StreamValue() = default;
-    StreamValue(ValueType type) noexcept;
-    StreamValue(std::int64_t value, ValueType type) noexcept;
-    StreamValue(std::int64_t value, std::int64_t capacity, std::int64_t length, std::int16_t element_size) noexcept;
+    Value() = default;
+    Value(ValueType type) noexcept;
+    Value(std::int64_t value, ValueType type) noexcept;
+    Value(std::int64_t value, std::int64_t capacity, std::int64_t length, std::int16_t element_size) noexcept;
 };
-struct BatchValue{};
 }
 namespace Trend{};
 }

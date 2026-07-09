@@ -1,6 +1,6 @@
 #include "vm/value.hpp"
 #include "vm/vm.hpp"
-#include "stream_macros.hpp"
+#include "macros.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <algorithm>
@@ -33,7 +33,7 @@ namespace Snap{
 static void* cold_dispatch[(std::uint64_t)Opcode::OP_OPCODE_COUNT];
 static void* hot_dispatch[(std::uint64_t)Opcode::OP_OPCODE_COUNT];
 
-VM_NOCLONE StreamValue* __attribute__((noinline, used, cold)) execute_cold_inst(StreamValue* code, StreamValue* frame_buffer) noexcept{
+VM_NOCLONE Value* __attribute__((noinline, used, cold)) execute_cold_inst(Value* code, Value* frame_buffer) noexcept{
     if(code == nullptr){
         //The first call(from same thread as the original call) to this function will have code = nullptr. So we need to initialize the cold_dispatch table
         /* ---- Other Arithmetic Instructions ------- */
@@ -398,7 +398,7 @@ VM_NOCLONE StreamValue* __attribute__((noinline, used, cold)) execute_cold_inst(
     }
 }
 //path is the array of pc values where we want to trace the execution via OP_TRACE. It is used for debugging
-VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_stream_vm(std::int64_t frame_size, StreamValue* code, StreamValue* frame_buffer, std::int64_t* traceback_func_loc_idx,
+VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_vm(std::int64_t frame_size, Value* code, Value* frame_buffer, std::int64_t* traceback_func_loc_idx,
                                                                                       std::int64_t* ret_loc_idx, std::int64_t* func_stack_off, std::vector<std::int64_t>& path) noexcept{
     if(code == nullptr){
         //The first call(from same thread as the original call) to this function will have code = nullptr. So we need to initialize the hot_dispatch table
@@ -564,10 +564,10 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_stre
 
         return -2;
     }
-    StreamValue* code_start = code;
+    Value* code_start = code;
     std::int64_t remaining_frame_size = frame_size;
-    StreamValue* extern_ret_vals[16];//U can have a most 16 ret values form an external function
-    StreamValue extern_args[128];//U can have a most 128 args to an external function
+    Value* extern_ret_vals[16];//U can have a most 16 ret values form an external function
+    Value extern_args[128];//U can have a most 128 args to an external function
     
     goto *(void*)code[0].value;
 
@@ -720,13 +720,13 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_stre
 
     /*--------Regular branch-----*/
     _L_OP_BR:{
-        GOTO((StreamValue*)((++code)->value));
+        GOTO((Value*)((++code)->value));
     }
     _L_OP_BR_TRUE:{
         const auto condition = frame_buffer[(++code)->value];
-        const auto label1 = (StreamValue*)((++code)->value);
-        const auto label2 = (StreamValue*)((++code)->value);
-        const auto label3 = (StreamValue*)((++code)->value);
+        const auto label1 = (Value*)((++code)->value);
+        const auto label2 = (Value*)((++code)->value);
+        const auto label3 = (Value*)((++code)->value);
         if(condition.is_missing){GOTO(label3);}
         else if(condition.value){GOTO(label1);}
         else{GOTO(label2);}
@@ -734,12 +734,12 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_stre
 
     /* ---- Calls --------------------------------------- */
     _L_OP_CALL:{
-        const auto func_loc = (StreamValue*)((++code)->value);
-        const auto stack_off = (++code)->value;
+        const auto func_loc = (Value*)((++code)->value);
+        const auto stack_off = (++code)->value;//IT is 0 if it is a tail call and you want to reuse the current stack frame
         const auto num_ret = (++code)->value;
         const auto num_args = (++code)->value;
         remaining_frame_size -= stack_off;
-        frame_buffer[stack_off + num_ret] = StreamValue((std::int64_t)(frame_buffer+stack_off), remaining_frame_size, remaining_frame_size, sizeof(StreamValue));//Contains the stack frame
+        frame_buffer[stack_off + num_ret] = Value((std::int64_t)(frame_buffer+stack_off), remaining_frame_size, remaining_frame_size, sizeof(Value));//Contains the stack frame
         for(std::int64_t i = 0; i < num_args; i++){
             frame_buffer[stack_off + 1 + num_ret + i] = frame_buffer[(++code)->value];
         }
@@ -758,15 +758,15 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_stre
         const auto func_ptr = (ExternFuncType)(++code)->value;
         const auto num_args = (++code)->value;
         const auto num_ret = (++code)->value;
-        // StreamValue** ret_vals = (StreamValue**)malloc(sizeof(StreamValue*) * num_ret);
+        // Value** ret_vals = (Value**)malloc(sizeof(Value*) * num_ret);
         for(std::int64_t i = 0; i < num_ret; i++){
             extern_ret_vals[i] = frame_buffer + (++code)->value;
         }
         for(std::int64_t i = 0; i < num_args; i++){
             extern_args[i] = frame_buffer[(++code)->value];
         }
-        memset(extern_ret_vals + num_ret, 0, sizeof(StreamValue*) * (16 - num_ret));//Reset the rest of the ret vals to nullptr
-        memset(extern_args + num_args, 0, sizeof(StreamValue) * (128 - num_args));//Reset the rest of the args to 0
+        memset(extern_ret_vals + num_ret, 0, sizeof(Value*) * (16 - num_ret));//Reset the rest of the ret vals to nullptr
+        memset(extern_args + num_args, 0, sizeof(Value) * (128 - num_args));//Reset the rest of the args to 0
         func_ptr(extern_args, extern_ret_vals);
         DISPATCH();
     }
@@ -846,10 +846,10 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_stre
 void set_dispatch_table(){
     execute_cold_inst(nullptr, nullptr);//This will initialize the cold_dispatch table
     std::vector<std::int64_t> dummy_path;
-    execute_stream_vm(0, nullptr, nullptr, nullptr, nullptr, nullptr, dummy_path);//This will initialize the hot_dispatch table
+    execute_vm(0, nullptr, nullptr, nullptr, nullptr, nullptr, dummy_path);//This will initialize the hot_dispatch table
 }
 
-void write_addr(StreamValue* code, std::int64_t code_size){
+void write_addr(Value* code, std::int64_t code_size){
     for(std::int64_t i = 0; i < code_size; i++){
         if(code[i].type == ValueType::VT_INSTRUCTION){
             const auto inst = code[i].value;
