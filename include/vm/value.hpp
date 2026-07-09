@@ -15,7 +15,8 @@ struct StreamValue{
     std::int64_t value = 0;//If i64 or fixed point float then interpreted as that. If ptr then interpreted as pointer(capacity, length and element size must be stored then)
                            //Reg means register number. Instruction means instruction number. Func_loc means function location in the bytecode. Label_loc means label location in the bytecode
                            //Note:We replace the value(which contains the instruction) with the address of the computed goto label. This value can contain the hot dispatch address if type == instruction
-                           //Note:If the type == register then we replace the value(which contains the register number) with the address in frame ptr
+                           //Note:If the type == func_loc then we replace the value(which contains the function location) with the address of the function in the bytecode. Do same for label
+
     std::int64_t capacity = 0;//If the instruction is a cold instruction then we reuse the capacity field to store the cold dispatch address.
     std::int64_t length = 0;
     std::int16_t element_size = 0;//Should be enough

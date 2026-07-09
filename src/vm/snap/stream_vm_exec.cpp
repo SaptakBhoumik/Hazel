@@ -33,7 +33,7 @@ namespace Snap{
 static void* cold_dispatch[(std::uint64_t)Opcode::OP_OPCODE_COUNT];
 static void* hot_dispatch[(std::uint64_t)Opcode::OP_OPCODE_COUNT];
 
-VM_NOCLONE StreamValue* __attribute__((noinline, used, cold)) execute_cold_inst(StreamValue* start_code, StreamValue* code, StreamValue* frame_buffer) noexcept{
+VM_NOCLONE StreamValue* __attribute__((noinline, used, cold)) execute_cold_inst(StreamValue* code, StreamValue* frame_buffer) noexcept{
     if(code == nullptr){
         //The first call(from same thread as the original call) to this function will have code = nullptr. So we need to initialize the cold_dispatch table
         /* ---- Other Arithmetic Instructions ------- */
@@ -103,7 +103,7 @@ VM_NOCLONE StreamValue* __attribute__((noinline, used, cold)) execute_cold_inst(
         /*-------Traceback--------------------------------*/
         COLD_INSERT(OP_PRINT_PTR);
 
-        return 0;
+        return nullptr;
     }
 
     goto *(void*)code->capacity; //capacity is used to store the address of the computed goto label for cold dispatch.
@@ -562,7 +562,7 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_stre
         INSERT(OP_IF_TRUE_TRACE);
         INSERT(OP_IF_MISSING_TRACE);
 
-        return 0;
+        return -2;
     }
     StreamValue* code_start = code;
     std::int64_t remaining_frame_size = frame_size;
@@ -720,13 +720,13 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_stre
 
     /*--------Regular branch-----*/
     _L_OP_BR:{
-        GOTO((++code)->value);
+        GOTO((StreamValue*)((++code)->value));
     }
     _L_OP_BR_TRUE:{
         const auto condition = frame_buffer[(++code)->value];
-        const auto label1 = (++code)->value;
-        const auto label2 = (++code)->value;
-        const auto label3 = (++code)->value;
+        const auto label1 = (StreamValue*)((++code)->value);
+        const auto label2 = (StreamValue*)((++code)->value);
+        const auto label3 = (StreamValue*)((++code)->value);
         if(condition.is_missing){GOTO(label3);}
         else if(condition.value){GOTO(label1);}
         else{GOTO(label2);}
@@ -734,7 +734,7 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_stre
 
     /* ---- Calls --------------------------------------- */
     _L_OP_CALL:{
-        const auto func_loc = (++code)->value;
+        const auto func_loc = (StreamValue*)((++code)->value);
         const auto stack_off = (++code)->value;
         const auto num_ret = (++code)->value;
         const auto num_args = (++code)->value;
@@ -744,7 +744,7 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_stre
             frame_buffer[stack_off + 1 + num_ret + i] = frame_buffer[(++code)->value];
         }
         frame_buffer += stack_off;
-        *traceback_func_loc_idx = func_loc;
+        *traceback_func_loc_idx = func_loc - code_start;
         *func_stack_off = stack_off;
         *ret_loc_idx = code - code_start;
 
@@ -837,24 +837,32 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_stre
         else{path.push_back(_pc); DISPATCH();}
     }
     ___L_COLD_LABEL:{
-        code = execute_cold_inst(code_start, code, frame_buffer);//code on the last argument of the instruction or on the instruction if it has no argument
+        code = execute_cold_inst(code, frame_buffer);//code on the last argument of the instruction or on the instruction if it has no argument
         DISPATCH();
     }
 }
 
 
 void set_dispatch_table(){
-    execute_cold_inst(0, nullptr, nullptr);//This will initialize the cold_dispatch table
+    execute_cold_inst(nullptr, nullptr);//This will initialize the cold_dispatch table
     std::vector<std::int64_t> dummy_path;
     execute_stream_vm(0, nullptr, nullptr, nullptr, nullptr, nullptr, dummy_path);//This will initialize the hot_dispatch table
 }
 
-void write_dispatch_addr(StreamValue* code, std::int64_t code_size){
+void write_addr(StreamValue* code, StreamValue* frame_buffer, std::int64_t code_size){
     for(std::int64_t i = 0; i < code_size; i++){
         if(code[i].type == ValueType::VT_INSTRUCTION){
             const auto inst = code[i].value;
             code[i].value = (std::int64_t)hot_dispatch[inst];
             code[i].capacity = (std::int64_t)cold_dispatch[inst];
+        }
+        else if(code[i].type == ValueType::VT_LABEL_LOC){
+            const auto label = code[i].value;
+            code[i].value = (std::int64_t)(code + label);
+        }
+        else if(code[i].type == ValueType::VT_FUNC_LOC){
+            const auto func_loc = code[i].value;
+            code[i].value = (std::int64_t)(code + func_loc);
         }
     }
 }

@@ -6,7 +6,7 @@
 #define COLD_INSERT(_op) cold_dispatch[(std::uint64_t)Opcode::_op]=&&_L_##_op;
 #define INSERT_COLD(_op) hot_dispatch[(std::uint64_t)Opcode::_op]=&&___L_COLD_LABEL;
 #define DISPATCH() goto *(void*)(++code)->value;
-#define GOTO(_loc) code = code_start + (_loc); goto *(void*)code->value;
+#define GOTO(_loc) code = _loc; goto *(void*)code->value;
 
 /* ---- Loads ----------------------------------------- */
 #define OP_SIMPLE_LOAD_INST(_op, _value) _L_##_op:{\
@@ -124,9 +124,9 @@
 #define OP_SIMPLE_BR_BINARY_CMP_INST(_op, _lhs, _rhs, _expr, _is_missing) _L_##_op:{\
                                                                               const auto lhs = _lhs;\
                                                                               const auto rhs = _rhs;\
-                                                                              const auto label1 = (++code)->value;\
-                                                                              const auto label2 = (++code)->value;\
-                                                                              const auto label3 = (++code)->value;\
+                                                                              const auto label1 = (StreamValue*)((++code)->value);\
+                                                                              const auto label2 = (StreamValue*)((++code)->value);\
+                                                                              const auto label3 = (StreamValue*)((++code)->value);\
                                                                               if(_is_missing){GOTO(label3)}\
                                                                               else if(_expr){GOTO(label1)}\
                                                                               else{GOTO(label2)}\
@@ -137,9 +137,9 @@
                                                                                             const auto arg2 = _arg2;\
                                                                                             const auto arg3 = _arg3;\
                                                                                             const auto arg4 = _arg4;\
-                                                                                            const auto label1 = (++code)->value;\
-                                                                                            const auto label2 = (++code)->value;\
-                                                                                            const auto label3 = (++code)->value;\
+                                                                                            const auto label1 = (StreamValue*)((++code)->value);\
+                                                                                            const auto label2 = (StreamValue*)((++code)->value);\
+                                                                                            const auto label3 = (StreamValue*)((++code)->value);\
                                                                                             if(_is_missing){GOTO(label3)}\
                                                                                             else if(_expr){GOTO(label1)}\
                                                                                             else{GOTO(label2)}\
@@ -150,13 +150,13 @@
                                                                                                  const auto arg2 = _arg2;\
                                                                                                  const auto arg3 = _arg3;\
                                                                                                  const auto arg4 = _arg4;\
-                                                                                                 const auto label1 = (++code)->value;\
-                                                                                                 const auto label2 = (++code)->value;\
-                                                                                                 const auto label3 = (++code)->value;\
+                                                                                                 const auto label1 = (StreamValue*)((++code)->value);\
+                                                                                                 const auto label2 = (StreamValue*)((++code)->value);\
+                                                                                                 const auto label3 = (StreamValue*)((++code)->value);\
                                                                                                  /*The -1 is important because we expect the PC to be incrimented after we return from cold function*/\
-                                                                                                 if(_is_missing){return start_code + label3 - 1;}\
-                                                                                                 else if(_expr){return start_code + label1 - 1;}\
-                                                                                                 else{return start_code + label2 - 1;}\
+                                                                                                 if(_is_missing){return label3 - 1;}\
+                                                                                                 else if(_expr){return label1 - 1;}\
+                                                                                                 else{return label2 - 1;}\
                                                                                              }
 
 /* ---- Heap objects: arrays ---------------------------------------------*/
