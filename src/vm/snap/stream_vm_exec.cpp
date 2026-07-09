@@ -849,7 +849,7 @@ void set_dispatch_table(){
     execute_stream_vm(0, nullptr, nullptr, nullptr, nullptr, nullptr, dummy_path);//This will initialize the hot_dispatch table
 }
 
-void write_addr(StreamValue* code, StreamValue* frame_buffer, std::int64_t code_size){
+void write_addr(StreamValue* code, std::int64_t code_size){
     for(std::int64_t i = 0; i < code_size; i++){
         if(code[i].type == ValueType::VT_INSTRUCTION){
             const auto inst = code[i].value;

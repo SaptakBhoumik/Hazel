@@ -213,11 +213,12 @@
 #define OP_SIMPLE_COLD_PTR_OFFSET_INST(_op, _ptr, _offset, _offset_val, _expr, _is_missing) _L_##_op:{\
                                                                                                 const auto ptr = _ptr;\
                                                                                                 const auto offset = _offset;\
+                                                                                                const auto offset_val = _offset_val;\
                                                                                                 const auto result_ptr = frame_buffer + (++code)->value;\
                                                                                                 result_ptr->type = ValueType::VT_PTR;\
                                                                                                 result_ptr->value = _expr;\
-                                                                                                result_ptr->capacity = std::max<std::int64_t>(0, ptr.capacity - _offset_val);\
-                                                                                                result_ptr->length = std::max<std::int64_t>(0, ptr.length - _offset_val);\
+                                                                                                result_ptr->capacity = std::max<std::int64_t>(0, ptr.capacity - offset_val);\
+                                                                                                result_ptr->length = std::max<std::int64_t>(0, ptr.length - offset_val);\
                                                                                                 result_ptr->element_size = ptr.element_size;\
                                                                                                 result_ptr->is_missing = _is_missing;\
                                                                                                 return code;\
@@ -296,7 +297,7 @@
 #define OP_SIMPLE_COLD_BINARY_FIND_TYPE2_INST(_op, _ptr, _start_idx, _value, _expr, _missing_condition) _L_##_op:{\
                                                                                                             const auto ptr = _ptr;\
                                                                                                             const auto start_idx = _start_idx;\
-                                                                                                            const auto size = ((_ptr.length - start_idx.value)*ptr.element_size)/sizeof(std::int64_t);\
+                                                                                                            const auto size = ((ptr.length - start_idx.value)*ptr.element_size)/sizeof(std::int64_t);\
                                                                                                             const auto value = _value;\
                                                                                                             const auto result_ptr = frame_buffer + (++code)->value;\
                                                                                                             result_ptr->type = ValueType::VT_I64;\
