@@ -17,10 +17,10 @@ struct StreamValue{
     std::int64_t capacity = 0;
     std::int64_t length = 0;
     std::int16_t element_size = 0;//Should be enough
-    ValueType type;
-    bool is_missing = false;
+    ValueType type = ValueType::VT_I64;
+    bool is_missing = true;
 
-    StreamValue() = delete;
+    StreamValue() = default;
     StreamValue(ValueType type) noexcept;
     StreamValue(std::int64_t value, ValueType type) noexcept;
     StreamValue(std::int64_t value, std::int64_t capacity, std::int64_t length, std::int16_t element_size) noexcept;

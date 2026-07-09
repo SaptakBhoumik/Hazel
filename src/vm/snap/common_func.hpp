@@ -6,20 +6,20 @@
 #include "stream_macros.hpp"
 
 namespace Hazel{
-static inline std::int64_t __attribute__((hot)) first_ge(const int64_t* arr, std::int64_t n, std::int64_t x) {
+static inline std::int64_t __attribute__((hot)) first_ge(const int64_t* arr, std::int64_t n, std::int64_t x) noexcept {
     const int64_t* it = std::lower_bound(arr, arr + n, x);
     return it - arr;
 }
-static inline std::int64_t __attribute__((hot)) first_le(const int64_t* arr, std::int64_t n, std::int64_t x) {
+static inline std::int64_t __attribute__((hot)) first_le(const int64_t* arr, std::int64_t n, std::int64_t x) noexcept {
     const int64_t* it = std::upper_bound(arr, arr + n, x);
     return (it - arr) - 1;
 }
-static inline std::int64_t __attribute__((hot)) fixed_point_float_mul_trunc(std::int64_t a, std::int64_t b) {
+static inline std::int64_t __attribute__((hot)) fixed_point_float_mul_trunc(std::int64_t a, std::int64_t b) noexcept {
     __int128 product = static_cast<__int128>(a) * static_cast<__int128>(b);
     return static_cast<std::int64_t>(product / FIXED_POINT_FLOAT_SCALING_FACTOR);
 }
 
-static inline std::int64_t __attribute__((hot)) fixed_point_float_mul_round(std::int64_t a, std::int64_t b) {
+static inline std::int64_t __attribute__((hot)) fixed_point_float_mul_round(std::int64_t a, std::int64_t b) noexcept {
     __int128 product = static_cast<__int128>(a) * static_cast<__int128>(b);
     __int128 result = (product >= 0)
                         ? (product + FIXED_POINT_FLOAT_SCALING_FACTOR / 2) / FIXED_POINT_FLOAT_SCALING_FACTOR
@@ -27,7 +27,7 @@ static inline std::int64_t __attribute__((hot)) fixed_point_float_mul_round(std:
     return static_cast<std::int64_t>(result);
 }
 
-static inline std::int64_t __attribute__((hot)) is_in_range_with_step(std::int64_t n, std::int64_t low, std::int64_t high, std::int64_t step) {
+static inline std::int64_t __attribute__((hot)) is_in_range_with_step(std::int64_t n, std::int64_t low, std::int64_t high, std::int64_t step) noexcept {
     if (step == 0) {
         return (low == high) && (n == low);
     }
@@ -38,7 +38,7 @@ static inline std::int64_t __attribute__((hot)) is_in_range_with_step(std::int64
     return (n - low) % step == 0;
 }
 
-static inline std::int64_t __attribute__((hot)) fixed_point_floor(std::int64_t a){
+static inline std::int64_t __attribute__((hot)) fixed_point_floor(std::int64_t a) noexcept{
     const std::int64_t value = (a/FIXED_POINT_FLOAT_SCALING_FACTOR)*FIXED_POINT_FLOAT_SCALING_FACTOR;
     if (value == a) {
         return value;
@@ -46,7 +46,7 @@ static inline std::int64_t __attribute__((hot)) fixed_point_floor(std::int64_t a
     return (a < 0) ? value - FIXED_POINT_FLOAT_SCALING_FACTOR : value;
 }
 
-static inline std::int64_t __attribute__((hot)) fixed_point_ceil(std::int64_t a){
+static inline std::int64_t __attribute__((hot)) fixed_point_ceil(std::int64_t a) noexcept{
     const std::int64_t value = (a/FIXED_POINT_FLOAT_SCALING_FACTOR)*FIXED_POINT_FLOAT_SCALING_FACTOR;
     if (value == a) {
         return value;
@@ -54,15 +54,15 @@ static inline std::int64_t __attribute__((hot)) fixed_point_ceil(std::int64_t a)
     return (a > 0) ? value + FIXED_POINT_FLOAT_SCALING_FACTOR : value;
 }
 
-static inline std::int64_t __attribute__((hot)) fixed_point_integral_part(std::int64_t a){
+static inline std::int64_t __attribute__((hot)) fixed_point_integral_part(std::int64_t a) noexcept{
     return (a/FIXED_POINT_FLOAT_SCALING_FACTOR)*FIXED_POINT_FLOAT_SCALING_FACTOR;
 }
 
-static inline std::int64_t __attribute__((hot)) fixed_point_fractional_part(std::int64_t a){
+static inline std::int64_t __attribute__((hot)) fixed_point_fractional_part(std::int64_t a) noexcept{
     return a - (a/FIXED_POINT_FLOAT_SCALING_FACTOR)*FIXED_POINT_FLOAT_SCALING_FACTOR;
 }
 
-static inline std::int64_t __attribute__((hot)) fixed_point_roundnearest(std::int64_t a){
+static inline std::int64_t __attribute__((hot)) fixed_point_roundnearest(std::int64_t a) noexcept{
     const std::int64_t integral = (a/FIXED_POINT_FLOAT_SCALING_FACTOR)*FIXED_POINT_FLOAT_SCALING_FACTOR;
     const std::int64_t fractional = a - integral;
     if (fractional >= FIXED_POINT_FLOAT_SCALING_FACTOR / 2) {
@@ -73,7 +73,7 @@ static inline std::int64_t __attribute__((hot)) fixed_point_roundnearest(std::in
     }
     return integral;
 }
-static inline std::int64_t __attribute__((hot)) fixed_point_roundeven(std::int64_t a){
+static inline std::int64_t __attribute__((hot)) fixed_point_roundeven(std::int64_t a) noexcept{
     const std::int64_t integral = (a/FIXED_POINT_FLOAT_SCALING_FACTOR)*FIXED_POINT_FLOAT_SCALING_FACTOR;
     const std::int64_t fractional = a - integral;
     if (fractional > FIXED_POINT_FLOAT_SCALING_FACTOR / 2) {
@@ -89,7 +89,7 @@ static inline std::int64_t __attribute__((hot)) fixed_point_roundeven(std::int64
 }
 
 // Integer sqrt (floor) via Newton's method, operating in 128-bit to avoid overflow on the a*SCALE intermediate.
-static inline __int128 __isqrt128(__int128 n) {
+static inline __int128 __isqrt128(__int128 n) noexcept {
     if (n < 2) return n; // handles n == 0, n == 1
 
     // Seed the guess with a hardware sqrt to cut iteration count.
@@ -114,7 +114,7 @@ static inline __int128 __isqrt128(__int128 n) {
     return x;
 }
 
-static inline std::int64_t __attribute__((hot)) fixed_point_sqrt(std::int64_t a) {
+static inline std::int64_t __attribute__((hot)) fixed_point_sqrt(std::int64_t a) noexcept {
     //Returns -1 if a is negative. The user is expected to set the value to be missing in that case
     if(a < 0) {
         return -1;

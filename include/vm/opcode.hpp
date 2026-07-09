@@ -25,7 +25,7 @@ enum class Opcode:std::uint8_t{
     
     //How to understand the naming convention. Almost every opcode has one of type suffix. The type suffixes are of the <arg1>,<arg2>... format. arg<N> is the argument register/intermediate. Note that dest is optional. And if dest is given then the prefix of Opcode is the type of dest
     //I64 is a signed interger of 64 bits,I64FLOAT is a signed interger of 64 bits/fixed floating point and the instruction dont care, FLOAT is a fixed floating point number of 64 bits. The source of the operation is register i.e this references another variable
-    //I64I is a signed interger of 64 bits,I64FLOATI is a signed interger of 64 bits/fixed floating point and the instruction dont care, FLOATI is a fixed floating point number of 64 bits. The source of the operation is an immediate value i.e this references a constant value
+    //II64 is a signed interger of 64 bits,I64FLOATI is a signed interger of 64 bits/fixed floating point and the instruction dont care, FLOATI is a fixed floating point number of 64 bits. The source of the operation is an immediate value i.e this references a constant value
     //Note:An instruction with I<N> or II<N> expects all the argument to be of same sign. Like we dont care about the sign of argument but we expect all the arguments to be of same sign.
     //Note:An value can be missing. That is why conditional branch operation take 3 branches. And if missing then applying operation on missing value will return a missing value for most of the instruction(Exception being the operation designed to check if missing value or not)
     //     In the implementation for lets say add, we usually add the number and do an || operation on the bool of lhs.is_missing and rhs.is_missing. No need of if else. The value stored in missing valued register is not defined and accessing it is UB anyways
@@ -48,7 +48,8 @@ enum class Opcode:std::uint8_t{
     //Div and rem return missing if rhs is 0 or (lhs,rhs) = (INT_MIN, -1) for signed integer. Because that is UB in C++.
     OP_I64FLOAT_ADD_I64FLOAT_I64FLOAT,
     OP_I64FLOAT_SUB_I64FLOAT_I64FLOAT,
-    OP_I64_MUL_I64_I64, OP_FLOAT_MUL_TRUNC_FLOAT_FLOAT, OP_FLOAT_MUL_ROUND_FLOAT_FLOAT,//The trunc and round are 2 diffrent mode from which user can choose
+    OP_I64_MUL_I64_I64, OP_FLOAT_MUL_ROUND_FLOAT_FLOAT,
+    // OP_FLOAT_MUL_TRUNC_FLOAT_FLOAT, 
     OP_I64_DIV_I64_I64, OP_FLOAT_DIV_FLOAT_FLOAT,
     OP_I64FLOAT_REM_I64FLOAT_I64FLOAT,
     OP_I64FLOAT_MIN_I64FLOAT_I64FLOAT,
@@ -56,7 +57,8 @@ enum class Opcode:std::uint8_t{
 
     //Add,mul,min,max is commutative so we can have immediate as second argument and that will be enough
     OP_I64FLOAT_ADD_I64FLOAT_I64FLOATI,
-    OP_I64_MUL_I64_II64, OP_FLOAT_MUL_TRUNC_FLOAT_FLOATI, OP_FLOAT_MUL_ROUND_FLOAT_FLOATI,
+    OP_I64_MUL_I64_II64, OP_FLOAT_MUL_ROUND_FLOAT_FLOATI,
+    // OP_FLOAT_MUL_TRUNC_FLOAT_FLOATI, 
     OP_I64_DIV_I64_II64, OP_FLOAT_DIV_FLOAT_FLOATI,
     OP_I64FLOAT_REM_I64FLOAT_I64FLOATI,
     OP_I64FLOAT_MAX_I64FLOAT_I64FLOATI,
@@ -84,10 +86,14 @@ enum class Opcode:std::uint8_t{
 
 
     /* ---- Other Arithmetic Instructions ------- */
-    OP_I64_WEIGHTED_ADD_II64_I64_REG_WEIGHT, OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOAT_REG_WEIGHT, OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOAT_REG_WEIGHT, 
-    OP_I64_WEIGHTED_ADD_II64_II64_REG_WEIGHT, OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOATI_REG_WEIGHT, OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOATI_REG_WEIGHT, 
-    OP_I64_WEIGHTED_ADD_II64_I64_IMM_WEIGHT, OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOAT_IMM_WEIGHT, OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOAT_IMM_WEIGHT, 
-    OP_I64_WEIGHTED_ADD_II64_II64_IMM_WEIGHT, OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOATI_IMM_WEIGHT, OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOATI_IMM_WEIGHT, 
+    OP_I64_WEIGHTED_ADD_II64_I64_REG_WEIGHT, OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOAT_REG_WEIGHT, 
+    OP_I64_WEIGHTED_ADD_II64_II64_REG_WEIGHT, OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOATI_REG_WEIGHT, 
+    OP_I64_WEIGHTED_ADD_II64_I64_IMM_WEIGHT,  OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOAT_IMM_WEIGHT, 
+    OP_I64_WEIGHTED_ADD_II64_II64_IMM_WEIGHT, OP_FLOAT_WEIGHTED_ADD_ROUND_II64_FLOATI_IMM_WEIGHT, 
+    // OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOAT_REG_WEIGHT, 
+    // OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOATI_REG_WEIGHT, 
+    // OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOAT_IMM_WEIGHT,
+    // OP_FLOAT_WEIGHTED_ADD_TRUNC_II64_FLOATI_IMM_WEIGHT, 
 
     /* ---- Binary Bitwise Instructions ----------- */
     OP_I64_BIT_AND_I64_I64, OP_I64_BIT_OR_I64_I64, OP_I64_BIT_XOR_I64_I64,
@@ -125,8 +131,8 @@ enum class Opcode:std::uint8_t{
     OP_I64_GE_PTRI64FLOATI_PTRI64FLOAT,
     OP_I64_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOATI,//Usually step is a constant
     OP_I64_NOT_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOATI,//Usually step is a constant
-    OP_I64_IN_RANGE_PTR_PTR_PTR_I64I,//(lower,upper,step) Note:-The step in bytes is scale*step. Where scale is sizeof element
-    OP_I64_NOT_IN_RANGE_PTR_PTR_PTR_I64I,//(lower,upper,step) Note:-The step in bytes is scale*step. Where scale is sizeof element
+    OP_I64_IN_RANGE_PTR_PTR_PTR_II64,//(lower,upper,step) Note:-The step in bytes is scale*step. Where scale is sizeof element
+    OP_I64_NOT_IN_RANGE_PTR_PTR_PTR_II64,//(lower,upper,step) Note:-The step in bytes is scale*step. Where scale is sizeof element
     //I can expand more for IN_RANGE but the explosion of instruction is not worth it. 
 
  
@@ -155,7 +161,7 @@ enum class Opcode:std::uint8_t{
     OP_BR_GT_I64FLOAT_I64FLOATI,
     OP_BR_GT_I64FLOATI_I64FLOAT,
     OP_BR_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOATI,
-    OP_BR_IN_RANGE_PTR_PTR_PTR_I64I,
+    OP_BR_IN_RANGE_PTR_PTR_PTR_II64,
  
 
     /*--------Regular branch-----*/
@@ -235,7 +241,7 @@ enum class Opcode:std::uint8_t{
     /* ---- No-ops / control -------------------------------------------- */
     OP_NOP,//Does nothing, useful for padding or reserved space
     OP_HALT,// stop execution, return to host. Must be last instruction in the program. Returns -1 to host as a sign of successful execution
-    OP_TRAP,// stop execution, return to host and give index at with trap occurred. Helps with creating a traceback
+    OP_TRAP,// stop execution, return to host and give index at with trap occurred. Helps with creating a traceback especially when verifying contraint or exception
     OP_IF_TRUE_TRAP,// stop execution, return to host and give index at with trap occurred if the value in the register is true. Helps with creating a traceback. Also traps if the condition is missing
     OP_IF_MISSING_TRAP,// stop execution, return to host and give index at with trap occurred if the value in the register is missing. Helps with creating a traceback 
     OP_TRACE,// Dont stop execution but add the pc of this instruction to the path vector. Helps with creating a traceback
