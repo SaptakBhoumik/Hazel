@@ -6,6 +6,8 @@
 #include "macros.hpp"
 
 namespace Hazel{
+namespace Snap{
+namespace VM{
 static inline std::int64_t __attribute__((hot)) first_ge(const int64_t* arr, std::int64_t n, std::int64_t x) noexcept {
     const int64_t* it = std::lower_bound(arr, arr + n, x);
     return it - arr;
@@ -128,5 +130,7 @@ static inline std::int64_t __attribute__((hot)) fixed_point_sqrt(std::int64_t a)
     const __int128 result = (hi_err < lo_err) ? (s + 1) : s;
 
     return (std::int64_t)result;
+}
+}
 }
 }

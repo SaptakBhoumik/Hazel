@@ -16,6 +16,7 @@
 
 namespace Hazel{
 namespace Snap{
+namespace VM{
 //traceback_func_loc_idx, ret_loc_idx and memory_offset_idx must be innitialized with every value as -1
 //traceback_func_loc_idx is the idx in code where the function we call started. Like if we call func1() and func1 calls func2() then 
 //traceback_func_loc_idx[0] is the idx in code where func1 started and traceback_func_loc_idx[1] is the idx in code where func2 started. 
@@ -73,11 +74,12 @@ VM_NOCLONE Value* __attribute__((noinline, used, cold)) execute_cold_inst(Value*
         COLD_INSERT(OP_I64_GET_PTR_I64);
         COLD_INSERT(OP_FLOAT_GET_PTR_I64);
         COLD_INSERT(OP_PTR_GET_PTR_I64);
+        COLD_INSERT(OP_PTR_SLICE_PTR_I64);
         COLD_INSERT(OP_PTR_PTROFFSET_ADD_PTR_I64);
         COLD_INSERT(OP_PTR_PTROFFSET_ADD_PTR_II64);
+        COLD_INSERT(OP_PTR_PTROFFSET_SUB_PTR_I64);
         COLD_INSERT(OP_SET_PTR_I64_I64FLOAT);
         COLD_INSERT(OP_SET_PTR_I64_PTR);
-        COLD_INSERT(OP_PTR_PTROFFSET_SUB_PTR_I64);
         COLD_INSERT(OP_I64_LEN_PTR);
         COLD_INSERT(OP_I64_CAP_PTR);
         COLD_INSERT(OP_I64_ELM_SIZE_PTR);
@@ -252,6 +254,21 @@ VM_NOCLONE Value* __attribute__((noinline, used, cold)) execute_cold_inst(Value*
     OP_SIMPLE_COLD_GET_INT64FLOAT_INST(OP_I64_GET_PTR_I64, frame_buffer[(++code)->value], ValueType::VT_I64);
     OP_SIMPLE_COLD_GET_INT64FLOAT_INST(OP_FLOAT_GET_PTR_I64, frame_buffer[(++code)->value], ValueType::VT_I64);
     OP_SIMPLE_COLD_GET_PTR_INST(OP_PTR_GET_PTR_I64, frame_buffer[(++code)->value]);
+
+    _L_OP_PTR_SLICE_PTR_I64:{
+        const auto ptr = frame_buffer[(++code)->value];
+        const auto num_count = frame_buffer[(++code)->value];
+        const auto ptr_offset = frame_buffer + (++code)->value;
+        ptr_offset->type = ValueType::VT_PTR;
+        ptr_offset->is_missing = ptr.is_missing || num_count.is_missing || num_count.value < 0 || num_count.value > ptr.capacity;
+        if(!ptr_offset->is_missing){
+            ptr_offset->value = ptr.value + num_count.value*ptr.element_size;
+            ptr_offset->length = std::min(num_count.value, ptr.length);
+            ptr_offset->capacity = num_count.value;
+            ptr_offset->element_size = ptr.element_size;
+        }
+        return code;
+    }
 
     OP_SIMPLE_COLD_PTR_OFFSET_INST(OP_PTR_PTROFFSET_ADD_PTR_I64, frame_buffer[(++code)->value], frame_buffer[(++code)->value], offset.value, ptr.value + offset.value*ptr.element_size, ptr.is_missing || offset.is_missing);
     OP_SIMPLE_COLD_PTR_OFFSET_INST(OP_PTR_PTROFFSET_SUB_PTR_I64, frame_buffer[(++code)->value], frame_buffer[(++code)->value], offset.value, ptr.value - offset.value*ptr.element_size, ptr.is_missing || offset.is_missing);
@@ -516,6 +533,9 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_vm(s
         INSERT(OP_I64_GET_PTR_II64);
         INSERT(OP_FLOAT_GET_PTR_II64);
         INSERT(OP_PTR_GET_PTR_II64);
+
+        INSERT_COLD(OP_PTR_SLICE_PTR_I64);
+        INSERT(OP_PTR_SLICE_PTR_II64);//Much more common.
 
         INSERT_COLD(OP_PTR_PTROFFSET_ADD_PTR_I64);
         INSERT_COLD(OP_PTR_PTROFFSET_ADD_PTR_II64);
@@ -791,6 +811,21 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_vm(s
     OP_SIMPLE_GET_INT64FLOAT_INST(OP_FLOAT_GET_PTR_II64, frame_buffer[(++code)->value], ValueType::VT_I64);
     OP_SIMPLE_GET_PTR_INST(OP_PTR_GET_PTR_II64, frame_buffer[(++code)->value]);
 
+    _L_OP_PTR_SLICE_PTR_II64:{
+        const auto ptr = frame_buffer[(++code)->value];
+        const auto num_count = (++code)->value;
+        const auto ptr_offset = frame_buffer + (++code)->value;
+        ptr_offset->type = ValueType::VT_PTR;
+        ptr_offset->is_missing = ptr.is_missing || num_count < 0 || num_count > ptr.capacity;
+        if(!ptr_offset->is_missing){
+            ptr_offset->value = ptr.value + num_count*ptr.element_size;
+            ptr_offset->length = std::min(num_count, ptr.length);
+            ptr_offset->capacity = num_count;
+            ptr_offset->element_size = ptr.element_size;
+        }
+        DISPATCH();
+    }
+    
     OP_SIMPLE_SET_INT64FLOAT_INST(OP_SET_PTR_II64_I64FLOAT, frame_buffer[(++code)->value], frame_buffer[(++code)->value]);
     OP_SIMPLE_SET_PTR_INST(OP_SET_PTR_II64_PTR, frame_buffer[(++code)->value], frame_buffer[(++code)->value]);
 
@@ -865,6 +900,7 @@ void write_addr(Value* code, std::int64_t code_size){
             code[i].value = (std::int64_t)(code + func_loc);
         }
     }
+}
 }
 }
 }

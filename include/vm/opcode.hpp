@@ -2,26 +2,9 @@
 #include <cstdint>
 namespace Hazel{
 namespace Snap{
+namespace VM{
 enum class Opcode:std::uint8_t{
     //NOTE:Any instruction that takes in immediate value cant be missing because that wont make sense
-    /*
-    We have 2 version of the VM. 
-    One is the normal version which processes one data point at a time
-    Other is the version for batch processing which processes multiple data points at a time. Basically each register stores an array so we need a for loop for each instruction.
-    I think that will be more efficient than processing one data point at a time because we can do better cache locality and also we can use SIMD instructions for some of the instructions and compiler can auto vectorize some of the instructions. 
-    SO both execute same bytecode but diffrently
-    But this has a few issue worth keepin in mind.
-    The first is that the function of batch processing will be larger than the normal version which can hurt cache locality.
-    Another is that we have to implementation approach. 
-    1)For every register we need to store an array. Scalar are not allowed i.e no broadcasting. This is good for most instruction. But for a lot of instruction 
-      without immediate varient, we need to store the immediate value in a register as an array(The intermediate variant ones dont have such issue). 
-      Which increases memory usage
-    2)Add an if statment in the instruction to check if the register is scalar or array. If it is scalar then we can broadcast it to all the elements of the array. 
-      This is good for memory usage but increases the size of the function and also increases the number of branches which can hurt performance.
-    3)Try a hybrid approach. For some instruction we can use the first approach and for some instruction we can use the second approach. 
-
-    I will go with the hybrid approach.
-    */
     
     //How to understand the naming convention. Almost every opcode has one of type suffix. The type suffixes are of the <arg1>,<arg2>... format. arg<N> is the argument register/intermediate. Note that dest is optional. And if dest is given then the prefix of Opcode is the type of dest
     //I64 is a signed interger of 64 bits,I64FLOAT is a signed interger of 64 bits/fixed floating point and the instruction dont care, FLOAT is a fixed floating point number of 64 bits. The source of the operation is register i.e this references another variable
@@ -189,6 +172,9 @@ enum class Opcode:std::uint8_t{
     OP_FLOAT_GET_PTR_II64,//dest = *(a+b*scale) (bounds-checked). If offset < 0 then it losses this bound check
     OP_PTR_GET_PTR_II64,//dest = *(a+b*scale) (bounds-checked). If offset < 0 then it losses this bound check
 
+    OP_PTR_SLICE_PTR_I64,//I64 is the number of elements to slice.
+    OP_PTR_SLICE_PTR_II64,//I64 is the number of elements to slice.
+    
     OP_PTR_PTROFFSET_ADD_PTR_I64,//dest = a + b*scale (pointer arithmetic, b is number of element. Bound checked. Capacity set to 0 if out of range). If offset < 0 then it losses this bound check
     OP_PTR_PTROFFSET_ADD_PTR_II64,//dest = a + b*scale (pointer arithmetic, b is number of element. Bound checked. Capacity set to 0 if out of range). If offset < 0 then it losses this bound check
     OP_PTR_PTROFFSET_SUB_PTR_I64,//dest = a - b*scale (pointer arithmetic, b is number of element. Bound checked. Capacity set to 0 if out of range). If offset < 0 then it losses this bound check
@@ -250,6 +236,7 @@ enum class Opcode:std::uint8_t{
 
     OP_OPCODE_COUNT    /* keep last: total opcode count, sizes dispatch tables */
 };
+}
+}
 namespace Trend{};
-};
 };

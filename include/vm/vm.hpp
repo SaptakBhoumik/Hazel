@@ -8,6 +8,7 @@
 #include <cstdint>
 namespace Hazel{
 namespace Snap{
+namespace VM{
 using  ExternFuncType = void (*)(Value* args, Value** ret_value);//ret_value is pointer to the stack frame
 
 class VM{
@@ -17,6 +18,7 @@ class VM{
     public:
     VM(std::vector<Value> code, std::size_t frame_buffer_size, std::size_t max_function_call_depth) noexcept;
 };
+}
 }
 namespace Trend{};
 }

@@ -2,6 +2,7 @@
 #include <cstdint>
 namespace Hazel{
 namespace Snap{
+namespace VM{
 enum class ValueType:std::uint8_t{
     VT_INSTRUCTION,
     VT_FUNC_LOC,
@@ -28,6 +29,7 @@ struct Value{
     Value(std::int64_t value, ValueType type) noexcept;
     Value(std::int64_t value, std::int64_t capacity, std::int64_t length, std::int16_t element_size) noexcept;
 };
+}
 }
 namespace Trend{};
 }
