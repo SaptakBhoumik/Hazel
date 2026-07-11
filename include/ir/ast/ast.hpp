@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include <unordered_map>
+
 namespace Hazel {
 namespace Snap{
 namespace IR {
@@ -49,7 +50,7 @@ class TypeExpr{
     public:
     TypeExpr(Token tok, TypeExprKind kind);
 
-    virtual void set_token(Token tok) final;//Change the token type in case of type reduction
+    virtual void set_token(Token tok) final;//Change the token type in case of type reduction. NOTE:DONT USE TOKEN AS THE NAME OF ANY TYPE. OR ELSE WE WILL HAVE ISSUE WHEN WE CHANGE IT
 
     virtual TypeExprKind get_kind() const final;
     virtual Token get_token() const final;
@@ -62,9 +63,12 @@ class TypeExpr{
 using TypeExprPtr = std::shared_ptr<TypeExpr>;
 
 class NamedTypeExpr : public TypeExpr{
+    Token name;
     public:
     NamedTypeExpr(Token tok);
-
+    
+    Token get_name() const;
+    
     std::size_t get_size() const override;//Return 0 cuz temporary type expr. Eleminated by type reduction. So size is unknown
     std::string to_string() const override;
 };
@@ -104,11 +108,11 @@ class VoidTypeExpr : public TypeExpr{
 
 class PtrTypeExpr : public TypeExpr{
     //ptr<element_size>
-    std::int64_t element_size;
+    std::uint64_t element_size;
     public:
-    PtrTypeExpr(Token tok, std::int64_t element_size);
+    PtrTypeExpr(Token tok, std::uint64_t element_size);
 
-    std::int64_t get_element_size() const;
+    std::uint64_t get_element_size() const;
 
     std::size_t get_size() const override;
     std::string to_string() const override;
@@ -143,6 +147,17 @@ class StructTypeExpr : public TypeExpr{
     std::string to_string() const override;
 };
 
+class LabelTypeExpr : public TypeExpr{
+    std::vector<TypeExprPtr> param_types;
+    public:
+    LabelTypeExpr(Token tok, std::vector<TypeExprPtr> param_types);
+
+    std::vector<TypeExprPtr> get_param_types() const;
+
+    std::size_t get_size() const override;
+    std::string to_string() const override;
+};
+
 class FuncTypeExpr : public TypeExpr{
     //fn(type1,type2, ... ) -> return_type
     Token tok;//the 'fn' token for error reporting
@@ -158,16 +173,6 @@ class FuncTypeExpr : public TypeExpr{
     std::string to_string() const override;
 };
 
-class LabelTypeExpr : public TypeExpr{
-    std::vector<TypeExprPtr> param_types;
-    public:
-    LabelTypeExpr(Token tok, std::vector<TypeExprPtr> param_types);
-
-    std::vector<TypeExprPtr> get_param_types() const;
-
-    std::size_t get_size() const override;
-    std::string to_string() const override;
-};
 
 enum class LiteralKind:std::uint8_t{
     ZeroInitLiteralExpr,
@@ -274,18 +279,20 @@ class LabelLiteralExpr : public LiteralExpr{
 
     void set_arg_type() override;
 
+    Token get_name() const;
     std::vector<LiteralExprPtr> get_args() const;
 
     std::string to_string() const override;
 };
 class FuncLiteralExpr : public LiteralExpr{
-    //func(elem1, elem2, ... )
+    //func(elem1, elem2, ... )//Can be external function also
     std::vector<LiteralExprPtr> args;
     public:
     FuncLiteralExpr(Token tok, std::vector<LiteralExprPtr> args, TypeExprPtr type);
 
     void set_arg_type() override;
 
+    Token get_name() const;
     std::vector<LiteralExprPtr> get_args() const;
 
     std::string to_string() const override;

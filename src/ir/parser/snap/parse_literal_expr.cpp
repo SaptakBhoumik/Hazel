@@ -1,72 +1,61 @@
-#include "parser/parser.hpp"
+#include "ir/parser/parser.hpp"
 
-namespace LIRA {
+namespace Hazel {
+namespace Snap{
 namespace IR {
-LiteralExprPtr Parser::parse_literal_expr(){
+LiteralExprPtr Parser::parse_literal_expr(bool parse_type){
+    TypeExprPtr type = nullptr;
+    if(parse_type){
+        type = parse_type_expr();
+        expect(TokenType::colon, "Expected ':' after type in literal expression");
+        advance();//After the : token
+    }
     switch (this->curr_tok.type){
-        case TokenType::global_identifier:
-        case TokenType::local_identifier:
-        case TokenType::label_identifier:
-        case TokenType::instruction_identifier:
-        case TokenType::scope_identifier:
-        case TokenType::builtin_identifier:{
-            return parse_named_literal_expr();
-        }
-        case TokenType::raw_string:
-        case TokenType::string:{
-            return parse_string_literal_expr();
-        }
-        case TokenType::number:{
-            return parse_num_literal_expr();
-        }
-        case TokenType::kw_null:{
-            return parse_null_literal_expr();
-        }
-        case TokenType::kw_zeroinitializer:{
-            return parse_zeroinit_literal_expr();
+        case TokenType::kw_zeroinit:{
+            return std::make_shared<ZeroInitLiteralExpr>(this->curr_tok, type);
         }
         case TokenType::kw_poison:{
-            return parse_poison_literal_expr();
+            return std::make_shared<PoisonLiteralExpr>(this->curr_tok, type);
+        }
+        case TokenType::local_identifier:{
+            return std::make_shared<NamedLiteralExpr>(this->curr_tok, type);
+        }
+        case TokenType::integer:
+        case TokenType::decimal:{
+            return std::make_shared<NumLiteralExpr>(this->curr_tok, type);
+        }
+        case TokenType::string:
+        case TokenType::raw_string:{
+            return std::make_shared<StringLiteralExpr>(this->curr_tok, type);
         }
         case TokenType::lbracket:{
-            return parse_array_literal_expr();
+            return parse_array_literal_expr(type);
         }
         case TokenType::langel:{
-            return parse_simd_literal_expr();
+            return parse_packed_struct_literal_expr(type);
         }
         case TokenType::lbrace:{
-            return parse_struct_literal_expr();
+            return parse_struct_literal_expr(type);
+        }
+        case TokenType::label_identifier:{
+            return parse_label_literal_expr(type);
+        }
+        case TokenType::global_func_identifier:
+        case TokenType::extern_func_identifier:{
+            return parse_func_literal_expr(type);
         }
         default:{
             error(curr_tok, "Expected a literal expression");
         }
     }
 }
-LiteralExprPtr Parser::parse_named_literal_expr(){
-    return std::make_shared<NamedLiteralExpr>(this->curr_tok);
-}
-LiteralExprPtr Parser::parse_string_literal_expr(){
-    return std::make_shared<StringLiteralExpr>(this->curr_tok);
-}
-LiteralExprPtr Parser::parse_num_literal_expr(){
-    return std::make_shared<NumLiteralExpr>(this->curr_tok);
-}
 
-LiteralExprPtr Parser::parse_null_literal_expr(){
-    return std::make_shared<NULLLiteralExpr>(this->curr_tok);
-}
-LiteralExprPtr Parser::parse_zeroinit_literal_expr(){
-    return std::make_shared<ZeroInitLiteralExpr>(this->curr_tok);
-}
-LiteralExprPtr Parser::parse_poison_literal_expr(){
-    return std::make_shared<PoisonLiteralExpr>(this->curr_tok);
-}
-LiteralExprPtr Parser::parse_array_literal_expr(){
+LiteralExprPtr Parser::parse_array_literal_expr(TypeExprPtr type){
     Token tok = this->curr_tok;//the [ token
     std::vector<LiteralExprPtr> elements;
     while(peek().type != TokenType::rbracket){
         advance();//After the [ token or the , token
-        elements.push_back(parse_literal_expr());
+        elements.push_back(parse_literal_expr(false));
         if(peek().type == TokenType::comma){
             advance();//On the , token
         }
@@ -75,30 +64,15 @@ LiteralExprPtr Parser::parse_array_literal_expr(){
         }
     }
     expect(TokenType::rbracket, "Expected ']' after array literal elements in array literal expression");
-    return std::make_shared<ArrayLiteralExpr>(tok, elements);
+    return std::make_shared<ArrayLiteralExpr>(tok, elements, type);
 }
-LiteralExprPtr Parser::parse_simd_literal_expr(){
+LiteralExprPtr Parser::parse_packed_struct_literal_expr(TypeExprPtr type){
     Token tok = this->curr_tok;//the < token
-    std::vector<LiteralExprPtr> elements;
-    while(peek().type != TokenType::rangel){
-        advance();//After the < token or the , token
-        elements.push_back(parse_literal_expr());
-        if(peek().type == TokenType::comma){
-            advance();//On the , token
-        }
-        else if(peek().type != TokenType::rangel){
-            error(peek(), "Expected ',' or '>' after SIMD literal element in SIMD literal expression");
-        }
-    }
-    expect(TokenType::rangel, "Expected '>' after SIMD literal elements in SIMD literal expression");
-    return std::make_shared<SIMDLiteralExpr>(tok, elements);
-}
-LiteralExprPtr Parser::parse_struct_literal_expr(){
-    Token tok = this->curr_tok;//the { token
+    expect(TokenType::lbrace, "Expected '{' after '<' in packed struct literal expression");
     std::vector<LiteralExprPtr> elements;
     while(peek().type != TokenType::rbrace){
         advance();//After the { token or the , token
-        elements.push_back(parse_literal_expr());
+        elements.push_back(parse_literal_expr(false));
         if(peek().type == TokenType::comma){
             advance();//On the , token
         }
@@ -107,8 +81,59 @@ LiteralExprPtr Parser::parse_struct_literal_expr(){
         }
     }
     expect(TokenType::rbrace, "Expected '}' after struct literal elements in struct literal expression");
-    return std::make_shared<StructLiteralExpr>(tok, elements);
+    expect(TokenType::rangel, "Expected '>' after packed struct literal elements in packed struct literal expression");
+    return std::make_shared<StructLiteralExpr>(tok, elements, true, type);
 }
-
+LiteralExprPtr Parser::parse_struct_literal_expr(TypeExprPtr type){
+    Token tok = this->curr_tok;//the { token
+    std::vector<LiteralExprPtr> elements;
+    while(peek().type != TokenType::rbrace){
+        advance();//After the { token or the , token
+        elements.push_back(parse_literal_expr(false));
+        if(peek().type == TokenType::comma){
+            advance();//On the , token
+        }
+        else if(peek().type != TokenType::rbrace){
+            error(peek(), "Expected ',' or '}' after struct literal element in struct literal expression");
+        }
+    }
+    expect(TokenType::rbrace, "Expected '}' after struct literal elements in struct literal expression");
+    return std::make_shared<StructLiteralExpr>(tok, elements, false, type);
+}
+LiteralExprPtr Parser::parse_label_literal_expr(TypeExprPtr type){
+    Token tok = this->curr_tok;//the label identifier token
+    expect(TokenType::lparen, "Expected '(' after label identifier in label literal expression");
+    std::vector<LiteralExprPtr> args;
+    while(peek().type != TokenType::rparen){
+        advance();//After the ( token or the , token
+        args.push_back(parse_literal_expr(false));
+        if(peek().type == TokenType::comma){
+            advance();//On the , token
+        }
+        else if(peek().type != TokenType::rparen){
+            error(peek(), "Expected ',' or ')' after label literal argument in label literal expression");
+        }
+    }
+    expect(TokenType::rparen, "Expected ')' after label literal arguments in label literal expression");
+    return std::make_shared<LabelLiteralExpr>(tok, args, type);
+}
+LiteralExprPtr Parser::parse_func_literal_expr(TypeExprPtr type){
+    Token tok = this->curr_tok;//the function identifier token
+    expect(TokenType::lparen, "Expected '(' after function identifier in function literal expression");
+    std::vector<LiteralExprPtr> args;
+    while(peek().type != TokenType::rparen){
+        advance();//After the ( token or the , token
+        args.push_back(parse_literal_expr(false));
+        if(peek().type == TokenType::comma){
+            advance();//On the , token
+        }
+        else if(peek().type != TokenType::rparen){
+            error(peek(), "Expected ',' or ')' after function literal argument in function literal expression");
+        }
+    }
+    expect(TokenType::rparen, "Expected ')' after function literal arguments in function literal expression");
+    return std::make_shared<FuncLiteralExpr>(tok, args, type);
+}
+}
 }
 }

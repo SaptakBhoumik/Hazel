@@ -1,9 +1,10 @@
-#include "lexer/token.hpp"
-#include "parser/parser.hpp"
+#include "ir/lexer/token.hpp"
+#include "ir/parser/parser.hpp"
 #include <cstddef>
 #include <iostream>
 
-namespace LIRA {
+namespace Hazel {
+namespace Snap{
 namespace IR {
 void Parser::advance(){
     this->curr_index++;
@@ -48,6 +49,7 @@ void Parser::expect(TokenType expected_type, std::string msg,std::string submsg,
 
     display(err);
     exit(1);
+}
 }
 }
 }

@@ -9,15 +9,12 @@ TypeExpr::TypeExpr(Token tok, TypeExprKind kind){
     this->tok = tok;
     this->kind = kind;
 }
-
 void TypeExpr::set_token(Token tok){
     this->tok = tok;
 }
-
 TypeExprKind TypeExpr::get_kind() const{
     return this->kind;
 }
-
 Token TypeExpr::get_token() const{
     return this->tok;
 }
@@ -25,8 +22,11 @@ Token TypeExpr::get_token() const{
 
 NamedTypeExpr::NamedTypeExpr(Token tok)
     : TypeExpr(tok, TypeExprKind::NamedTypeExpr){
+    this->name = tok;
 }
-
+Token NamedTypeExpr::get_name() const{
+    return this->name;
+}
 std::size_t NamedTypeExpr::get_size() const{
     return 0;
 }
@@ -38,43 +38,39 @@ std::string NamedTypeExpr::to_string() const{
 IntTypeExpr::IntTypeExpr(Token tok)
     : TypeExpr(tok, TypeExprKind::IntTypeExpr){
 }
-
 std::size_t IntTypeExpr::get_size() const{
     return 8+1;//8 bytes for value, 1 byte for is missing field
 }
 std::string IntTypeExpr::to_string() const{
-    return this->tok.value;
+    return "integer";
 }
 
 
 DecimalTypeExpr::DecimalTypeExpr(Token tok)
     : TypeExpr(tok, TypeExprKind::DecimalTypeExpr){
 }
-
 std::size_t DecimalTypeExpr::get_size() const{
     return 8+1;//8 bytes for value, 1 byte for is missing field
 }
 std::string DecimalTypeExpr::to_string() const{
-    return this->tok.value;
+    return "decimal";
 }
 
 
 StringTypeExpr::StringTypeExpr(Token tok)
     : TypeExpr(tok, TypeExprKind::StringTypeExpr){
 }
-
 std::size_t StringTypeExpr::get_size() const{
     return 8+8+8+2+1;//8 bytes for pointer, 8 bytes for length, 8 bytes for capacity, 2 bytes for element size, 1 byte for is missing field
 }
 std::string StringTypeExpr::to_string() const{
-    return this->tok.value;
+    return "string";
 }
 
 
 VoidTypeExpr::VoidTypeExpr()
     : TypeExpr(Token(), TypeExprKind::VoidTypeExpr){
 }
-
 std::size_t VoidTypeExpr::get_size() const{
     return 0;
 }
@@ -83,15 +79,14 @@ std::string VoidTypeExpr::to_string() const{
 }
 
 
-PtrTypeExpr::PtrTypeExpr(Token tok, std::int64_t element_size)
+PtrTypeExpr::PtrTypeExpr(Token tok, std::uint64_t element_size)
     : TypeExpr(tok, TypeExprKind::PtrTypeExpr){
     this->element_size = element_size;
 }
 
-std::int64_t PtrTypeExpr::get_element_size() const{
+std::uint64_t PtrTypeExpr::get_element_size() const{
     return this->element_size;
 }
-
 std::size_t PtrTypeExpr::get_size() const{
     return 8+8+8+2+1;//8 bytes for pointer, 8 bytes for length, 8 bytes for capacity, 2 bytes for element size, 1 byte for is missing field
 }
@@ -105,11 +100,9 @@ ArrayTypeExpr::ArrayTypeExpr(Token tok, TypeExprPtr base_type)
     this->tok = tok;
     this->base_type = base_type;
 }
-
 TypeExprPtr ArrayTypeExpr::get_basetype() const{
     return this->base_type;
 }
-
 std::size_t ArrayTypeExpr::get_size() const{
     return 8+8+8+2+1;//8 bytes for pointer, 8 bytes for length, 8 bytes for capacity, 2 bytes for element size, 1 byte for is missing field
 }
@@ -124,15 +117,12 @@ StructTypeExpr::StructTypeExpr(Token tok, std::vector<TypeExprPtr> fields, bool 
     this->fields = fields;
     this->packed = packed;
 }
-
 std::vector<TypeExprPtr> StructTypeExpr::get_fields() const{
     return this->fields;
 }
-
 bool StructTypeExpr::is_packed() const{
     return this->packed;
 }
-
 std::size_t StructTypeExpr::get_size() const{
     if(this->packed){
         return 8+8+8+2+1;//8 bytes for pointer, 8 bytes for length, 8 bytes for capacity, 2 bytes for element size, 1 byte for is missing field
@@ -156,45 +146,13 @@ std::string StructTypeExpr::to_string() const{
 }
 
 
-FuncTypeExpr::FuncTypeExpr(Token tok, std::vector<TypeExprPtr> param_types, TypeExprPtr return_type)
-    : TypeExpr(tok, TypeExprKind::FuncTypeExpr){
-    this->tok = tok;
-    this->param_types = param_types;
-    this->return_type = return_type;
-}
-
-std::vector<TypeExprPtr> FuncTypeExpr::get_param_types() const{
-    return this->param_types;
-}
-TypeExprPtr FuncTypeExpr::get_return_type() const{
-    return this->return_type;
-}
-
-std::size_t FuncTypeExpr::get_size() const{
-    return 0;
-}
-std::string FuncTypeExpr::to_string() const{
-    std::string res = "fn(";
-    for(size_t i=0;i<this->param_types.size();i++){
-        res += this->param_types[i]->to_string();
-        if(i!=this->param_types.size()-1){
-            res += ", ";
-        }
-    }
-    res += ") -> " + this->return_type->to_string();
-    return res;
-}
-
-
 LabelTypeExpr::LabelTypeExpr(Token tok, std::vector<TypeExprPtr> param_types)
     : TypeExpr(tok, TypeExprKind::LabelTypeExpr){
     this->param_types = param_types;
 }
-
 std::vector<TypeExprPtr> LabelTypeExpr::get_param_types() const{
     return this->param_types;
 }
-
 std::size_t LabelTypeExpr::get_size() const{
     return 0;
 }
@@ -207,6 +165,34 @@ std::string LabelTypeExpr::to_string() const{
         }
     }
     res += ")";
+    return res;
+}
+
+
+FuncTypeExpr::FuncTypeExpr(Token tok, std::vector<TypeExprPtr> param_types, TypeExprPtr return_type)
+    : TypeExpr(tok, TypeExprKind::FuncTypeExpr){
+    this->tok = tok;
+    this->param_types = param_types;
+    this->return_type = return_type;
+}
+std::vector<TypeExprPtr> FuncTypeExpr::get_param_types() const{
+    return this->param_types;
+}
+TypeExprPtr FuncTypeExpr::get_return_type() const{
+    return this->return_type;
+}
+std::size_t FuncTypeExpr::get_size() const{
+    return 0;
+}
+std::string FuncTypeExpr::to_string() const{
+    std::string res = "fn(";
+    for(size_t i=0;i<this->param_types.size();i++){
+        res += this->param_types[i]->to_string();
+        if(i!=this->param_types.size()-1){
+            res += ", ";
+        }
+    }
+    res += ") -> " + this->return_type->to_string();
     return res;
 }
 }

@@ -9,19 +9,15 @@ DebugInfo::DebugInfo(Token tok, Token file_name, Token line, Token column){
     this->line = line;
     this->column = column;
 }
-
 Token DebugInfo::get_file_name() const{
     return this->file_name;
 }
-
 Token DebugInfo::get_line() const{
     return this->line;
 }
-
 Token DebugInfo::get_column() const{
     return this->column;
 }
-
 Token DebugInfo::get_token() const{
     return this->tok;
 }
@@ -37,7 +33,6 @@ InstructionStmt::InstructionStmt(Token tok, Token instruction, std::optional<std
     this->params = params;
     this->debug_info = debug_info;
 }
-
 Token InstructionStmt::get_instruction() const{
     return this->instruction;
 }
@@ -91,7 +86,6 @@ Label::Label(Token tok, Token name, std::vector<InstructionStmtPtr> statements, 
         }
     }
 }
-
 Token Label::get_name() const{
     return this->name;
 }
@@ -126,7 +120,6 @@ std::string Label::to_string() const{
     res += "}";
     return res;
 }
-
 std::optional<std::pair<Token, TypeExprPtr>> Label::get_parameter(std::string name) const{
     auto it = this->parameter_map.find(name);
     if(it == this->parameter_map.end()){
@@ -186,7 +179,6 @@ Function::Function(Token tok, Token name, std::vector<std::pair<Token, TypeExprP
         }
     }
 }
-
 Token Function::get_name() const{
     return this->name;
 }
@@ -229,7 +221,6 @@ std::string Function::to_string() const{
     }
     return res;
 }
-
 std::optional<std::pair<Token, TypeExprPtr>> Function::get_parameter(std::string name) const{
     auto it = this->parameter_map.find(name);
     if(it == this->parameter_map.end()){
@@ -278,7 +269,6 @@ Program::Program(std::vector<FunctionPtr> items, bool calculate_map){
         }
     }
 }
-
 std::vector<FunctionPtr> Program::get_items() const{
     return this->items;
 }
