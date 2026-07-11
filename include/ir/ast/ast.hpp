@@ -353,6 +353,7 @@ class Function {
     Token tok;//The ``fn`` token for error reporting
     Token name;//The function name token for error reporting and identifying the function
     std::vector<std::pair<Token, TypeExprPtr>> params;
+    TypeExprPtr return_type;
     std::unordered_map<std::string,std::uint64_t> parameter_map;//For faster access. The second argument is the index of the parameter. Calculated automatically
     std::vector<LabelPtr> body;//Empty if it is just a function declaration without a body. A function declaration with body must have atleast one label
                                //The first label is the entry point. Atleast one label is needed so we for forward declaration without body, this vector has 0 length
@@ -360,12 +361,13 @@ class Function {
     std::unordered_map<std::string,std::uint64_t> local_var_map;//For faster access. The second argument is the index of the local variable in the labels
     DebugInfoPtr debug_info = nullptr;
     public:
-    Function(Token tok, Token name, std::vector<std::pair<Token, TypeExprPtr>> params, 
+    Function(Token tok, Token name, std::vector<std::pair<Token, TypeExprPtr>> params, TypeExprPtr return_type,
              std::vector<LabelPtr> body, DebugInfoPtr debug_info, bool calculate_maps);//We dont calulate the map by default. We do it only after type reduction and after verifying there is no duplicate variable or unknown variable
 
     Token get_name() const;
     Token get_token() const;
     std::vector<std::pair<Token, TypeExprPtr>> get_params() const;
+    TypeExprPtr get_return_type() const;
     bool is_signature_only() const;//Returns true if it is just a function declaration without a body.
     std::vector<LabelPtr> get_body() const;
     DebugInfoPtr get_debug_info() const;

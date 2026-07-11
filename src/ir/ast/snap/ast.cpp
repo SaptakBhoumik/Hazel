@@ -157,11 +157,12 @@ std::optional<Utils::triplet<Token, TypeExprPtr, bool>> Label::get_local_var_or_
 }
 
 
-Function::Function(Token tok, Token name, std::vector<std::pair<Token, TypeExprPtr>> params, 
+Function::Function(Token tok, Token name, std::vector<std::pair<Token, TypeExprPtr>> params, TypeExprPtr return_type,
                    std::vector<LabelPtr> body, DebugInfoPtr debug_info, bool calculate_maps){
     this->tok = tok;
     this->name = name;
     this->params = params;
+    this->return_type = return_type;
     this->body = body;
     this->debug_info = debug_info;
     if(calculate_maps){
@@ -188,6 +189,9 @@ Token Function::get_token() const{
 std::vector<std::pair<Token, TypeExprPtr>> Function::get_params() const{
     return this->params;
 }
+TypeExprPtr Function::get_return_type() const{
+    return this->return_type;
+}
 bool Function::is_signature_only() const{
     return this->body.empty();
 }
@@ -205,7 +209,7 @@ std::string Function::to_string() const{
             res += ", ";
         }
     }
-    res += ")";
+    res += ")->" + this->return_type->to_string();
     if(this->debug_info != nullptr){
         res += " ! " + this->debug_info->to_string();
     }

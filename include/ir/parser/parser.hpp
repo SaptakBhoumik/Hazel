@@ -40,8 +40,7 @@ class Parser {
 
     // Parse attributes
     DebugInfoPtr parse_debug_info();//On ! token. 
-    TypeExprPtr parse_type_expr_pair();//type:expr pair for args
-    InstructionStmtPtr parse_instruction_stmt(bool is_global);//On 'let' token or instruction token
+    InstructionStmtPtr parse_instruction_stmt();//On 'let' token or instruction token
     LabelPtr parse_label();//On label identifier token
     std::vector<LabelPtr> parse_labels();
     FunctionPtr parse_function();//On 'fn' token
