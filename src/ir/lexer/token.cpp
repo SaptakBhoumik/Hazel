@@ -44,15 +44,11 @@ std::string to_string(TokenType type){
         case TokenType::kw_fn: return "fn";
         case TokenType::kw_let: return "let";
         case TokenType::kw_label: return "label";
-        case TokenType::kw_null: return "null";
-        case TokenType::kw_zeroinitializer: return "zeroinitializer";
         case TokenType::kw_poison: return "poison";
         case TokenType::kw_integer: return "integer";
         case TokenType::kw_decimal: return "decimal";
         case TokenType::kw_string: return "string";
         case TokenType::kw_ptr: return "ptr";
-        case TokenType::kw_true: return "True";
-        case TokenType::kw_false: return "False";
 
         case TokenType::semicolon: return ";";
     }

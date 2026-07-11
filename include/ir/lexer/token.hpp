@@ -44,15 +44,12 @@ enum class TokenType {
     kw_fn,              // 'fn' keyword (for fn definitions)
     kw_let,             // 'let' keyword (for let declarations)
     kw_label,           // 'label' keyword (for label definitions)
-    kw_null,            // 'null' keyword (for null pointer constant)
-    kw_zeroinitializer, // 'zeroinitializer' keyword (for zero initializer constant)
+    kw_zeroinit, // 'zeroinit' keyword (for zero initializer constant)
     kw_poison,          // 'poison' keyword (for poison value constant). Means missing value. 
     kw_integer,         // 'integer' keyword (for int type)
     kw_decimal,         // 'decimal' keyword (for decimal type)
     kw_string,          // 'string' keyword (for string type)
     kw_ptr,             // 'ptr' keyword (for pointer type)
-    kw_true,            // 'true' keyword (for boolean true constant)
-    kw_false,           // 'false' keyword (for boolean false constant)
 
     semicolon,
 };

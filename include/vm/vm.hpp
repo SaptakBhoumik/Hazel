@@ -9,7 +9,7 @@
 namespace Hazel{
 namespace Snap{
 namespace VM{
-using  ExternFuncType = void (*)(Value* args, Value** ret_value);//ret_value is pointer to the stack frame
+using  ExternFuncType = std::int64_t (*)(Value** args, Value** ret_value);//ret_value is pointer to the stack frame
 
 class VM{
     std::vector<Value> code;

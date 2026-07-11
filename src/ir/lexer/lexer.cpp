@@ -70,15 +70,12 @@ void Lexer::flush_keyword(){
         {"fn", TokenType::kw_fn},
         {"let", TokenType::kw_let},
         {"label", TokenType::kw_label},
-        {"null", TokenType::kw_null},
-        {"zeroinitializer", TokenType::kw_zeroinitializer},
+        {"zeroinit", TokenType::kw_zeroinit},
         {"poison", TokenType::kw_poison},
         {"integer", TokenType::kw_integer},
         {"decimal", TokenType::kw_decimal},
         {"string", TokenType::kw_string},
         {"ptr", TokenType::kw_ptr},
-        {"True", TokenType::kw_true},
-        {"False", TokenType::kw_false}
     };
 
     TokenType type;

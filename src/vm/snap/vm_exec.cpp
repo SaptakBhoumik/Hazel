@@ -416,7 +416,8 @@ VM_NOCLONE Value* __attribute__((noinline, used, cold)) execute_cold_inst(Value*
 }
 //path is the array of pc values where we want to trace the execution via OP_TRACE. It is used for debugging
 VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_vm(std::int64_t frame_size, Value* code, Value* frame_buffer, std::int64_t* traceback_func_loc_idx,
-                                                                                      std::int64_t* ret_loc_idx, std::int64_t* func_stack_off, std::vector<std::int64_t>& path) noexcept{
+                                                                               std::int64_t* ret_loc_idx, std::int64_t* func_stack_off, std::vector<std::int64_t>& path,
+                                                                               Value** extern_ret_vals, Value** extern_args) noexcept{
     if(code == nullptr){
         //The first call(from same thread as the original call) to this function will have code = nullptr. So we need to initialize the hot_dispatch table
         /* ---- Loads ----------------------------------------- */
@@ -586,8 +587,6 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_vm(s
     }
     Value* code_start = code;
     std::int64_t remaining_frame_size = frame_size;
-    Value* extern_ret_vals[16];//U can have a most 16 ret values form an external function
-    Value extern_args[128];//U can have a most 128 args to an external function
     
     goto *(void*)code[0].value;
 
@@ -775,6 +774,7 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_vm(s
         GOTO(func_loc);
     }
     _L_OP_EXTERN_CALL_PTR:{
+        const auto _pc = code - code_start;
         const auto func_ptr = (ExternFuncType)(++code)->value;
         const auto num_args = (++code)->value;
         const auto num_ret = (++code)->value;
@@ -783,12 +783,19 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_vm(s
             extern_ret_vals[i] = frame_buffer + (++code)->value;
         }
         for(std::int64_t i = 0; i < num_args; i++){
-            extern_args[i] = frame_buffer[(++code)->value];
+            extern_args[i] = frame_buffer + (++code)->value;//These external function are provided by the compiler so we can trust them to not do weird stuff if pass by ptr
         }
-        memset(extern_ret_vals + num_ret, 0, sizeof(Value*) * (16 - num_ret));//Reset the rest of the ret vals to nullptr
-        memset(extern_args + num_args, 0, sizeof(Value) * (128 - num_args));//Reset the rest of the args to 0
-        func_ptr(extern_args, extern_ret_vals);
-        DISPATCH();
+        auto error_code = func_ptr(extern_args, extern_ret_vals);
+        if(error_code == -2){
+            return _pc;//Basically a trap
+        }
+        else if(error_code == -1){
+            return -1;//Halt
+        }
+        else if(error_code == -3){
+            path.push_back(_pc);//A trace but not trap
+        }
+        DISPATCH();//Either from a trace or from success(error_code == 0).
     }
     _L_OP_RET:{
         const auto num_ret = (++code)->value;
@@ -881,7 +888,7 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_vm(s
 void set_dispatch_table(){
     execute_cold_inst(nullptr, nullptr);//This will initialize the cold_dispatch table
     std::vector<std::int64_t> dummy_path;
-    execute_vm(0, nullptr, nullptr, nullptr, nullptr, nullptr, dummy_path);//This will initialize the hot_dispatch table
+    execute_vm(0, nullptr, nullptr, nullptr, nullptr, nullptr, dummy_path, nullptr, nullptr);//This will initialize the hot_dispatch table
 }
 
 void write_addr(Value* code, std::int64_t code_size){
