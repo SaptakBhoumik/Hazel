@@ -1,5 +1,6 @@
 #include "ir/ast/ast.hpp"
 #include "ir/lexer/token.hpp"
+#include "utils/graph.hpp"
 #include <map>
 
 namespace Hazel {
@@ -54,10 +55,12 @@ class Parser {
     std::unordered_map<std::string, TypeExprPtr> construct_type_table() const;//Constructs a type table from the global typedefs. The types in the type table are reduced types
     //The types in type_table are expected to be reduced types.
     TypeExprPtr reduce_type_expr(TypeExprPtr type, std::unordered_map<std::string, TypeExprPtr> type_table) const;//Reduces the type expression by replacing all the named types with their actual types. Throws error if a named type is not found in the type table
-    LiteralExprPtr reduce_literal_expr(LiteralExprPtr literal, std::string current_func, std::unordered_map<std::string, TypeExprPtr> type_table, 
+    LiteralExprPtr reduce_literal_expr(LiteralExprPtr literal, Utils::Graph& call_graph, std::string current_func, std::unordered_map<std::string, TypeExprPtr> type_table, 
                                        std::unordered_map<std::string, TypeExprPtr> func_symbol_table, std::unordered_map<std::string, TypeExprPtr> label_symbol_table,
                                        std::unordered_map<std::string, TypeExprPtr> local_var_table, std::unordered_map<std::string, TypeExprPtr> label_param_table) const;
                                        //Label parameter may shadow the previous local variable so check type with label_param_table first before local_var_table.
+    FunctionPtr reduce_function(FunctionPtr func, Utils::Graph& call_graph, std::vector<std::pair<Token, TypeExprPtr>> reduced_params, std::unordered_map<std::string, TypeExprPtr> type_table, std::unordered_map<std::string, TypeExprPtr> func_symbol_table) const;
+
     public:
     Parser(const std::vector<Token>& toks, const std::string& filename);
     ProgramPtr get_ast();

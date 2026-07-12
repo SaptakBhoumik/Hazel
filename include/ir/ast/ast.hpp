@@ -2,6 +2,7 @@
 #include "ir/lexer/token.hpp"
 #include "ir/lexer/lexer.hpp"
 #include "utils/error.hpp"
+#include "utils/graph.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -375,8 +376,9 @@ using FunctionPtr = std::shared_ptr<Function>;
 class Program{
     std::vector<FunctionPtr> items;
     std::unordered_map<std::string,std::uint64_t> function_map;//For faster access. The second argument is the index of the function in the items. Calculated automatically
+    std::optional<Utils::Graph> call_graph;
     public:
-    Program(std::vector<FunctionPtr> items, bool calculate_map);//We dont calulate the map by default. We do it only after type reduction and after verifying there is no duplicate variable or unknown variable
+    Program(std::vector<FunctionPtr> items, std::optional<Utils::Graph> call_graph, bool calculate_map);//We dont calulate the map by default. We do it only after type reduction and after verifying there is no duplicate variable or unknown variable
 
     std::vector<FunctionPtr> get_items() const;
     std::optional<std::pair<Token, FunctionPtr>> get_function(std::string name) const;

@@ -18,7 +18,7 @@ Parser::Parser(const std::vector<Token>& toks, const std::string& filename){
 void Parser::parse(){
     std::vector<FunctionPtr> items;
     if(this->toks.empty()){
-        this->ast = std::make_shared<Program>(items, false);
+        this->ast = std::make_shared<Program>(items, std::nullopt, false);
         return;
     }
     while(this->curr_tok.type != TokenType::eof){
@@ -28,7 +28,7 @@ void Parser::parse(){
         }
         advance();
     }
-    this->ast = std::make_shared<Program>(items, false);
+    this->ast = std::make_shared<Program>(items, std::nullopt, false);
 }
 ProgramPtr Parser::get_ast(){
     return this->ast;

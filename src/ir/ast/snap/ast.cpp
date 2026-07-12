@@ -265,8 +265,9 @@ std::optional<Utils::triplet<Token, TypeExprPtr, bool>> Function::get_local_var_
 }
 
 
-Program::Program(std::vector<FunctionPtr> items, bool calculate_map){
+Program::Program(std::vector<FunctionPtr> items, std::optional<Utils::Graph> call_graph, bool calculate_map){
     this->items = items;
+    this->call_graph = call_graph;
     if(calculate_map){
         for(size_t i=0;i<this->items.size();i++){
             this->function_map[this->items[i]->get_name().value] = i;

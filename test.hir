@@ -7,6 +7,7 @@
 let #typealias0 = <{integer, decimal, string, [integer], [decimal], [string]}>;
 let #typealias = {integer, #typealias0, string, [integer], [decimal], [string]};
 
+fn $func0() -> #typealias;
 fn $func1();
 fn $func2(let integer:%param) -> integer;
 
