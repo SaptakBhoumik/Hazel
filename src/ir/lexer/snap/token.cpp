@@ -44,6 +44,7 @@ std::string to_string(TokenType type){
         case TokenType::kw_fn: return "fn";
         case TokenType::kw_let: return "let";
         case TokenType::kw_label: return "label";
+        case TokenType::kw_zeroinit: return "zeroinit";
         case TokenType::kw_poison: return "poison";
         case TokenType::kw_integer: return "integer";
         case TokenType::kw_decimal: return "decimal";

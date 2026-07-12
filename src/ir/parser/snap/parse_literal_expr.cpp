@@ -102,6 +102,9 @@ LiteralExprPtr Parser::parse_struct_literal_expr(TypeExprPtr type){
 }
 LiteralExprPtr Parser::parse_label_literal_expr(TypeExprPtr type){
     Token tok = this->curr_tok;//the label identifier token
+    if(peek().type != TokenType::lparen){
+        return std::make_shared<LabelLiteralExpr>(tok, std::vector<LiteralExprPtr>(), type);
+    }
     expect(TokenType::lparen, "Expected '(' after label identifier in label literal expression");
     std::vector<LiteralExprPtr> args;
     while(peek().type != TokenType::rparen){
@@ -119,6 +122,9 @@ LiteralExprPtr Parser::parse_label_literal_expr(TypeExprPtr type){
 }
 LiteralExprPtr Parser::parse_func_literal_expr(TypeExprPtr type){
     Token tok = this->curr_tok;//the function identifier token
+    if(peek().type != TokenType::lparen){
+        return std::make_shared<FuncLiteralExpr>(tok, std::vector<LiteralExprPtr>(), type);
+    }
     expect(TokenType::lparen, "Expected '(' after function identifier in function literal expression");
     std::vector<LiteralExprPtr> args;
     while(peek().type != TokenType::rparen){

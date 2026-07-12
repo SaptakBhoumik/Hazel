@@ -1,0 +1,32 @@
+//Comment
+/* Multi
+    line
+    comment
+*/
+
+let #typealias0 = <{integer, decimal, string, [integer], [decimal], [string]}>;
+let #typealias = {integer, #typealias0, string, [integer], [decimal], [string]};
+
+fn $func1();
+fn $func2(let integer:%param) -> integer;
+
+fn $main() -> integer {
+    label @start{
+        let integer:%x = .local(integer:10);
+        let decimal:%y = .local(decimal:20.5);
+        let string:%z = .local(string:"Hello, World!");
+        
+        let [integer]:%arr_int = .local([integer]:[1, 2, 3, 4, 5]);
+        let [decimal]:%arr_dec = .local([decimal]:[1.1, 2.2, 3.3]);
+        let [string]:%arr_str = .local([string]:["one", "two", "three"]);
+        .ret(integer:0);
+    }
+    label @end(let integer:%result) {
+        .call(fn:$func1);
+        .call(fn():$func1());
+        .call(fn(integer)->integer:$func2(5));
+        .br(label(integer):@end(%result));
+        .br(label():@start);
+        .ret(integer:%result);
+    }
+}

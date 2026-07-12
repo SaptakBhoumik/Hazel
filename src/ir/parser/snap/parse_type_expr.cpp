@@ -102,6 +102,9 @@ TypeExprPtr Parser::parse_struct_type_expr(){
 TypeExprPtr Parser::parse_func_type_expr(){
     // fn(type1, type2, ... ) -> return_type
     Token tok = this->curr_tok;//the fn token
+    if(peek().type != TokenType::lparen){
+        return std::make_shared<FuncTypeExpr>(tok, std::vector<TypeExprPtr>(), std::make_shared<VoidTypeExpr>());
+    }
     expect(TokenType::lparen, "Expected '(' after 'fn' in function type expression");
     std::vector<TypeExprPtr> param_types;
     while(peek().type != TokenType::rparen){
@@ -118,6 +121,7 @@ TypeExprPtr Parser::parse_func_type_expr(){
     TypeExprPtr return_type = std::make_shared<VoidTypeExpr>();
     if(peek().type == TokenType::arrow){
         advance();//On the -> token
+        advance();//After the -> token
         return_type = parse_type_expr();
     }
     return std::make_shared<FuncTypeExpr>(tok, param_types, return_type);

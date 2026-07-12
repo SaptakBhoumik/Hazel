@@ -13,7 +13,6 @@ LiteralExpr::LiteralExpr(Token tok, LiteralKind kind, TypeExprPtr type){
 void LiteralExpr::set_type(TypeExprPtr type){
     this->type = type;
 }
-void LiteralExpr::set_arg_type(){}
 TypeExprPtr LiteralExpr::get_type() const{
     return this->type;
 }
@@ -78,12 +77,6 @@ ArrayLiteralExpr::ArrayLiteralExpr(Token tok, std::vector<LiteralExprPtr> elemen
     : LiteralExpr(tok, LiteralKind::ArrayLiteralExpr, type){
     this->elements = elements;
 }
-void ArrayLiteralExpr::set_arg_type(){
-    auto array_type = std::dynamic_pointer_cast<ArrayTypeExpr>(this->type);
-    for(auto& elem : this->elements){
-        elem->set_type(array_type->get_basetype());
-    }
-}
 std::vector<LiteralExprPtr> ArrayLiteralExpr::get_elements() const{
     return this->elements;
 }
@@ -104,12 +97,6 @@ StructLiteralExpr::StructLiteralExpr(Token tok, std::vector<LiteralExprPtr> fiel
     this->tok = tok;
     this->fields = fields;
     this->packed = packed;
-}
-void StructLiteralExpr::set_arg_type(){
-    auto struct_fields = std::dynamic_pointer_cast<StructTypeExpr>(this->type)->get_fields();
-    for(size_t i=0;i<this->fields.size();i++){
-        this->fields[i]->set_type(struct_fields[i]);
-    }
 }
 std::vector<LiteralExprPtr> StructLiteralExpr::get_fields() const{
     return this->fields;
@@ -136,12 +123,6 @@ LabelLiteralExpr::LabelLiteralExpr(Token tok, std::vector<LiteralExprPtr> args, 
 Token LabelLiteralExpr::get_name() const{
     return this->tok;
 }
-void LabelLiteralExpr::set_arg_type(){
-    auto label_param_type = std::dynamic_pointer_cast<LabelTypeExpr>(this->type)->get_param_types();
-    for(size_t i=0;i<this->args.size();i++){
-        this->args[i]->set_type(label_param_type[i]);
-    }
-}
 std::vector<LiteralExprPtr> LabelLiteralExpr::get_args() const{
     return this->args;
 }
@@ -163,12 +144,6 @@ FuncLiteralExpr::FuncLiteralExpr(Token tok, std::vector<LiteralExprPtr> args, Ty
 }
 Token FuncLiteralExpr::get_name() const{
     return this->tok;
-}
-void FuncLiteralExpr::set_arg_type(){
-    auto func_param_type = std::dynamic_pointer_cast<FuncTypeExpr>(this->type)->get_param_types();
-    for(size_t i=0;i<this->args.size();i++){
-        this->args[i]->set_type(func_param_type[i]);
-    }
 }
 std::vector<LiteralExprPtr> FuncLiteralExpr::get_args() const{
     return this->args;

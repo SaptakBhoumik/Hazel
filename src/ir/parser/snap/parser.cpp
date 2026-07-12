@@ -12,11 +12,14 @@ Parser::Parser(const std::vector<Token>& toks, const std::string& filename){
     if(!toks.empty()){
         this->curr_tok = toks[0];
     }
+    parse();
+    basic_typecheck();
 }
-ProgramPtr Parser::parse(){
+void Parser::parse(){
     std::vector<FunctionPtr> items;
     if(this->toks.empty()){
-        return std::make_shared<Program>(items, false);
+        this->ast = std::make_shared<Program>(items, false);
+        return;
     }
     while(this->curr_tok.type != TokenType::eof){
         auto item = parse_global_item();
@@ -25,10 +28,10 @@ ProgramPtr Parser::parse(){
         }
         advance();
     }
-    return std::make_shared<Program>(items, false);
+    this->ast = std::make_shared<Program>(items, false);
 }
-std::vector<std::pair<Token,TypeExprPtr>> Parser::get_global_typedef() const{
-    return this->global_typedef;
+ProgramPtr Parser::get_ast(){
+    return this->ast;
 }
 DebugInfoPtr Parser::parse_debug_info(){
     Token tok = this->curr_tok;//the ! token

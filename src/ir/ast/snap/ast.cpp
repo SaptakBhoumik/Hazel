@@ -117,7 +117,7 @@ std::string Label::to_string() const{
     for(const auto& stmt: this->statements){
         res += "\t\t" + stmt->to_string() + ";\n";
     }
-    res += "}";
+    res += "\t}";
     return res;
 }
 std::optional<std::pair<Token, TypeExprPtr>> Label::get_parameter(std::string name) const{
@@ -290,6 +290,83 @@ std::string Program::to_string() const{
         res += item->to_string() + "\n";
     }
     return res;
+}
+
+namespace TypeUtils{
+bool is_type_equal(TypeExprPtr type1, TypeExprPtr type2){
+    if(type1->get_kind() != type2->get_kind()){
+        return false;
+    }
+    switch(type1->get_kind()){
+        case TypeExprKind::NamedTypeExpr:{
+            auto named_type1 = std::dynamic_pointer_cast<NamedTypeExpr>(type1);
+            auto named_type2 = std::dynamic_pointer_cast<NamedTypeExpr>(type2);
+            return named_type1->get_name().value == named_type2->get_name().value;
+        }
+        case TypeExprKind::IntTypeExpr:
+        case TypeExprKind::DecimalTypeExpr:
+        case TypeExprKind::StringTypeExpr:
+        case TypeExprKind::VoidTypeExpr:{
+            return true;
+        }
+        case TypeExprKind::PtrTypeExpr:{
+            auto ptr_type1 = std::dynamic_pointer_cast<PtrTypeExpr>(type1);
+            auto ptr_type2 = std::dynamic_pointer_cast<PtrTypeExpr>(type2);
+            return ptr_type1->get_element_size() == ptr_type2->get_element_size();
+        }
+        case TypeExprKind::ArrayTypeExpr:{
+            auto array_type1 = std::dynamic_pointer_cast<ArrayTypeExpr>(type1);
+            auto array_type2 = std::dynamic_pointer_cast<ArrayTypeExpr>(type2);
+            return is_type_equal(array_type1->get_basetype(), array_type2->get_basetype());
+        }
+        case TypeExprKind::StructTypeExpr:{
+            auto struct_type1 = std::dynamic_pointer_cast<StructTypeExpr>(type1);
+            auto struct_type2 = std::dynamic_pointer_cast<StructTypeExpr>(type2);
+            auto fields1 = struct_type1->get_fields();
+            auto fields2 = struct_type2->get_fields();
+            if(fields1.size() != fields2.size()){
+                return false;
+            }
+            for(size_t i=0;i<fields1.size();i++){
+                if(!is_type_equal(fields1[i], fields2[i])){
+                    return false;
+                }
+            }
+            return struct_type1->is_packed() == struct_type2->is_packed();
+        }
+        case TypeExprKind::FuncTypeExpr:{
+            auto func_type1 = std::dynamic_pointer_cast<FuncTypeExpr>(type1);
+            auto func_type2 = std::dynamic_pointer_cast<FuncTypeExpr>(type2);
+            auto params1 = func_type1->get_param_types();
+            auto params2 = func_type2->get_param_types();
+            if(params1.size() != params2.size()){
+                return false;
+            }
+            for(size_t i=0;i<params1.size();i++){
+                if(!is_type_equal(params1[i], params2[i])){
+                    return false;
+                }
+            }
+            return is_type_equal(func_type1->get_return_type(), func_type2->get_return_type());
+        }
+        case TypeExprKind::LabelTypeExpr:{
+            auto label_type1 = std::dynamic_pointer_cast<LabelTypeExpr>(type1);
+            auto label_type2 = std::dynamic_pointer_cast<LabelTypeExpr>(type2);
+            auto params1 = label_type1->get_param_types();
+            auto params2 = label_type2->get_param_types();
+            if(params1.size() != params2.size()){
+                return false;
+            }
+            for(size_t i=0;i<params1.size();i++){
+                if(!is_type_equal(params1[i], params2[i])){
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+    return false;
+}
 }
 }
 }

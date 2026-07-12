@@ -79,12 +79,12 @@ std::string VoidTypeExpr::to_string() const{
 }
 
 
-PtrTypeExpr::PtrTypeExpr(Token tok, std::uint64_t element_size)
+PtrTypeExpr::PtrTypeExpr(Token tok, std::uint16_t element_size)
     : TypeExpr(tok, TypeExprKind::PtrTypeExpr){
     this->element_size = element_size;
 }
 
-std::uint64_t PtrTypeExpr::get_element_size() const{
+std::uint16_t PtrTypeExpr::get_element_size() const{
     return this->element_size;
 }
 std::size_t PtrTypeExpr::get_size() const{

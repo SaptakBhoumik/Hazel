@@ -38,7 +38,7 @@ void Parser::expect(TokenType expected_type, std::string msg,std::string submsg,
     advance();
 }
 
-[[noreturn]] void Parser::error(Token tok, std::string msg,std::string submsg,std::string ecode){
+[[noreturn]] void Parser::error(Token tok, std::string msg,std::string submsg,std::string ecode) const{
     //display error
     Utils::Location loc{tok.line, tok.col, this->filename, tok.source_line};
     Utils::Diagnostic err = {loc,

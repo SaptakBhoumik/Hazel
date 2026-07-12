@@ -108,11 +108,11 @@ class VoidTypeExpr : public TypeExpr{
 
 class PtrTypeExpr : public TypeExpr{
     //ptr<element_size>
-    std::uint64_t element_size;
+    std::uint16_t element_size;
     public:
-    PtrTypeExpr(Token tok, std::uint64_t element_size);
+    PtrTypeExpr(Token tok, std::uint16_t element_size);
 
-    std::uint64_t get_element_size() const;
+    std::uint16_t get_element_size() const;
 
     std::size_t get_size() const override;
     std::string to_string() const override;
@@ -195,7 +195,6 @@ class LiteralExpr{
     LiteralExpr(Token tok, LiteralKind kind, TypeExprPtr type);
 
     virtual void set_type(TypeExprPtr type) final;
-    virtual void set_arg_type();//Ignored for non-array, non-struct, non-label, non-func literals. For array, struct, label, func literals, it sets the type of all the args/fields to the type of the literal. This is used after type reduction to set the type of all the args/fields to the final type of the literal
 
     virtual TypeExprPtr get_type() const final;
     virtual LiteralKind get_kind() const final;
@@ -250,8 +249,6 @@ class ArrayLiteralExpr : public LiteralExpr{
     public:
     ArrayLiteralExpr(Token tok, std::vector<LiteralExprPtr> elements, TypeExprPtr type);
 
-    void set_arg_type() override;
-
     std::vector<LiteralExprPtr> get_elements() const;
 
     std::string to_string() const override;
@@ -264,8 +261,6 @@ class StructLiteralExpr : public LiteralExpr{
     public:
     StructLiteralExpr(Token tok, std::vector<LiteralExprPtr> fields, bool packed, TypeExprPtr type);
 
-    void set_arg_type() override;
-
     std::vector<LiteralExprPtr> get_fields() const;
     bool is_packed() const;
 
@@ -277,8 +272,6 @@ class LabelLiteralExpr : public LiteralExpr{
     public:
     LabelLiteralExpr(Token tok, std::vector<LiteralExprPtr> args, TypeExprPtr type);
 
-    void set_arg_type() override;
-
     Token get_name() const;
     std::vector<LiteralExprPtr> get_args() const;
 
@@ -289,8 +282,6 @@ class FuncLiteralExpr : public LiteralExpr{
     std::vector<LiteralExprPtr> args;
     public:
     FuncLiteralExpr(Token tok, std::vector<LiteralExprPtr> args, TypeExprPtr type);
-
-    void set_arg_type() override;
 
     Token get_name() const;
     std::vector<LiteralExprPtr> get_args() const;
@@ -393,6 +384,10 @@ class Program{
 };
 
 using ProgramPtr = std::shared_ptr<Program>;
+
+namespace TypeUtils{
+bool is_type_equal(TypeExprPtr type1, TypeExprPtr type2);//Expects reduced types
+}
 }
 }
 }
