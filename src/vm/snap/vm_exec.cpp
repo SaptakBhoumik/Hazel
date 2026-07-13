@@ -1,8 +1,10 @@
+//TODO:Mark every label/branch with [[likely]] or [[unlikely]] 
 #include "vm/value.hpp"
 #include "vm/vm.hpp"
 #include "macros.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <cmath>
 #include <algorithm>
 #include <cstring>
 #include <iostream>
@@ -256,18 +258,21 @@ VM_NOCLONE Value* __attribute__((noinline, used, cold)) execute_cold_inst(Value*
     OP_SIMPLE_COLD_GET_PTR_INST(OP_PTR_GET_PTR_I64, frame_buffer[(++code)->value]);
 
     _L_OP_PTR_SLICE_PTR_I64:{
-        const auto ptr = frame_buffer[(++code)->value];
+        const auto ptr = frame_buffer + (++code)->value;
         const auto num_count = frame_buffer[(++code)->value];
-        const auto ptr_offset = frame_buffer + (++code)->value;
-        ptr_offset->type = ValueType::VT_PTR;
-        ptr_offset->is_missing = ptr.is_missing || num_count.is_missing || num_count.value < 0 || num_count.value > ptr.capacity;
-        if(!ptr_offset->is_missing){
-            ptr_offset->value = ptr.value + num_count.value*ptr.element_size;
-            ptr_offset->length = std::min(num_count.value, ptr.length);
-            ptr_offset->capacity = num_count.value;
-            ptr_offset->element_size = ptr.element_size;
+        const auto dest_ptr = frame_buffer + (++code)->value;
+        dest_ptr->type = ValueType::VT_PTR;
+        dest_ptr->is_missing = ptr->is_missing || num_count.is_missing || num_count.value < 0 || num_count.value > ptr->capacity;
+        if(!dest_ptr->is_missing){
+            dest_ptr->value = ptr->value;
+            dest_ptr->length = std::min(num_count.value, ptr->length);
+            dest_ptr->capacity = num_count.value;
+            dest_ptr->element_size = ptr->element_size;
+            ptr->value += num_count.value*ptr->element_size;
+            ptr->length = std::max<std::int64_t>(ptr->length - num_count.value, 0);
+            ptr->capacity = std::max<std::int64_t>(ptr->capacity - num_count.value, 0);
         }
-        return code;
+        DISPATCH();
     }
 
     OP_SIMPLE_COLD_PTR_OFFSET_INST(OP_PTR_PTROFFSET_ADD_PTR_I64, frame_buffer[(++code)->value], frame_buffer[(++code)->value], offset.value, ptr.value + offset.value*ptr.element_size, ptr.is_missing || offset.is_missing);
@@ -414,10 +419,55 @@ VM_NOCLONE Value* __attribute__((noinline, used, cold)) execute_cold_inst(Value*
         return code;
     }
 }
+
+struct Context{
+    Value** frame_buffers;
+    Value** old_frame;//old_frame[idx] = frame_buffers[idx] + some offset
+    std::int64_t idx;//Index of current frame buffer
+    std::int64_t size;//Total number of frame buffers(Not all may be allocated)
+    std::int64_t allocated_size;//Total number of frame buffers allocated
+    std::int64_t first_frame_size;//Size of the first frame buffer. The most important frame buffer and usually larger
+    std::int64_t frame_size;//Size of each frame buffer
+    std::int64_t max_no_of_allocated_unused_frames;//Maximum number of unused frames that can be allocated. This is used to prevent memory exhaustion
+
+    struct CallFrame{
+        std::int64_t traceback_func_loc_idx;
+        std::int64_t func_stack_off;
+        std::int64_t ret_loc_idx;
+        Value* ret_loc_start;//Location from where we start putting return values
+    };
+    CallFrame* call_frame;
+    std::int64_t curr_call_depth;
+    std::int64_t max_possible_func_call_depth;//It can grow. Basically the capacity of stuff like traceback_func_loc_idx, ret_loc_idx, func_stack_off, ret_loc_start. The capacity can grow if needed. Not a hard limit
+    std::int64_t func_call_depth_ceil;//Negative if no limit
+
+    std::int64_t* path;
+    std::int64_t path_cap;
+    std::int64_t path_idx;
+};
+
+struct ReturnValue{
+    std::int64_t pc;
+    enum class ErrorCode:std::int8_t{
+        INIT_DISPATCH_TABLE,
+        
+        EXTERN_FUNC_HALT,
+        EXTERN_FUNC_TRAP,
+        
+        CALL_DEPTH_EXCEEDED,
+        STACK_FRAME_ALLOC_FAILED,
+
+        REGULAR_HALT,
+        REGULAR_TRAP,
+        CONDITIONAL_TRAP,
+        MISSING_VALUE_TRAP,
+    };
+    ErrorCode err;
+    
+    ReturnValue(std::int64_t pc, ErrorCode err):pc(pc),err(err){}
+};
 //path is the array of pc values where we want to trace the execution via OP_TRACE. It is used for debugging
-VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_vm(std::int64_t frame_size, Value* code, Value* frame_buffer, std::int64_t* traceback_func_loc_idx,
-                                                                               std::int64_t* ret_loc_idx, std::int64_t* func_stack_off, std::vector<std::int64_t>& path,
-                                                                               Value** extern_ret_vals, Value** extern_args) noexcept{
+VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Value* code, Context* context, Value** extern_ret_vals, Value** extern_args) noexcept{
     if(code == nullptr){
         //The first call(from same thread as the original call) to this function will have code = nullptr. So we need to initialize the hot_dispatch table
         /* ---- Loads ----------------------------------------- */
@@ -516,8 +566,8 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_vm(s
         INSERT(OP_BR_TRUE);
 
         /* ---- Calls --------------------------------------- */
-        INSERT(OP_CALL);
         INSERT(OP_EXTERN_CALL_PTR);
+        INSERT(OP_CALL);
         INSERT(OP_RET);
     
         /* ---- Heap objects: arrays ---------------------------------------------*/
@@ -583,10 +633,11 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_vm(s
         INSERT(OP_IF_TRUE_TRACE);
         INSERT(OP_IF_MISSING_TRACE);
 
-        return -2;
+        return ReturnValue(0, ReturnValue::ErrorCode::INIT_DISPATCH_TABLE);
     }
     Value* code_start = code;
-    std::int64_t remaining_frame_size = frame_size;
+    Value* frame_buffer = context->frame_buffers[context->idx];
+    std::int64_t remaining_frame_size = context->first_frame_size;
     
     goto *(void*)code[0].value;
 
@@ -752,33 +803,11 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_vm(s
     }
 
     /* ---- Calls --------------------------------------- */
-    _L_OP_CALL:{
-        const auto func_loc = (Value*)((++code)->value);
-        const auto stack_off = (++code)->value;//IT is 0 if it is a tail call and you want to reuse the current stack frame
-        const auto num_ret = (++code)->value;
-        const auto num_args = (++code)->value;
-        remaining_frame_size -= stack_off;
-        frame_buffer[stack_off + num_ret] = Value((std::int64_t)(frame_buffer+stack_off), remaining_frame_size, remaining_frame_size, sizeof(Value));//Contains the stack frame
-        for(std::int64_t i = 0; i < num_args; i++){
-            frame_buffer[stack_off + 1 + num_ret + i] = frame_buffer[(++code)->value];
-        }
-        frame_buffer += stack_off;
-        *traceback_func_loc_idx = func_loc - code_start;
-        *func_stack_off = stack_off;
-        *ret_loc_idx = code - code_start;
-
-        traceback_func_loc_idx++;
-        func_stack_off++;
-        ret_loc_idx++;
-
-        GOTO(func_loc);
-    }
     _L_OP_EXTERN_CALL_PTR:{
         const auto _pc = code - code_start;
         const auto func_ptr = (ExternFuncType)(++code)->value;
         const auto num_args = (++code)->value;
         const auto num_ret = (++code)->value;
-        // Value** ret_vals = (Value**)malloc(sizeof(Value*) * num_ret);
         for(std::int64_t i = 0; i < num_ret; i++){
             extern_ret_vals[i] = frame_buffer + (++code)->value;
         }
@@ -786,31 +815,98 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_vm(s
             extern_args[i] = frame_buffer + (++code)->value;//These external function are provided by the compiler so we can trust them to not do weird stuff if pass by ptr
         }
         auto error_code = func_ptr(extern_args, extern_ret_vals);
-        if(error_code == -2){
-            return _pc;//Basically a trap
+        if(error_code == -1){
+            return ReturnValue(_pc, ReturnValue::ErrorCode::EXTERN_FUNC_HALT);
         }
-        else if(error_code == -1){
-            return -1;//Halt
+        else if(error_code == -2){
+            return ReturnValue(_pc, ReturnValue::ErrorCode::EXTERN_FUNC_TRAP);
         }
         else if(error_code == -3){
-            path.push_back(_pc);//A trace but not trap
+            context->path[context->path_idx] = _pc;
+            context->path_idx++;
+            if(context->path_idx >= context->path_cap){
+                context->path_cap *= 2;
+                context->path = (std::int64_t*)realloc(context->path, sizeof(std::int64_t) * context->path_cap);
+            }
+            // path.push_back(_pc);//A trace but not trap
         }
         DISPATCH();//Either from a trace or from success(error_code == 0).
+    }
+    _L_OP_CALL:{
+        const auto _pc = code - code_start;
+        if(context->func_call_depth_ceil >= 0 && context->curr_call_depth >= context->func_call_depth_ceil){
+            return ReturnValue(_pc, ReturnValue::ErrorCode::CALL_DEPTH_EXCEEDED);
+        }
+        const auto func_loc = (Value*)((++code)->value);
+        auto stack_off = (++code)->value;//It can be zero if it is tail call but that assumes there is no overlap in frame_buffer[_stack_off + 1 + i] = caller_frame_buffer[(++code)->value];
+                                                       //This is very easy to verify at the compiler level
+        auto _stack_off = stack_off;
+        const auto needed_stack_size = (++code)->value;//Assumed to be less than context->frame_size
+        const auto num_args = (++code)->value;
+        const auto ret_loc_start = frame_buffer + (++code)->value;
+        const auto caller_frame_buffer = frame_buffer;  
+
+        remaining_frame_size -= stack_off;
+        if(remaining_frame_size < needed_stack_size){
+            context->old_frame[context->idx] = frame_buffer;
+            context->idx++;
+            if(context->idx >= context->size){
+                context->size *= 2;
+                context->frame_buffers = (Value**)realloc(context->frame_buffers, sizeof(Value*) * context->size);
+                context->old_frame = (Value**)realloc(context->old_frame, sizeof(Value*) * context->size);
+                if(context->frame_buffers == nullptr || context->old_frame == nullptr){
+                    return ReturnValue(_pc, ReturnValue::ErrorCode::STACK_FRAME_ALLOC_FAILED);
+                }
+            }
+            if(context->idx >= context->allocated_size){
+                context->allocated_size++;
+                context->frame_buffers[context->idx] = (Value*)malloc(sizeof(Value) * context->frame_size);
+                if(context->frame_buffers[context->idx] == nullptr){
+                    return ReturnValue(_pc, ReturnValue::ErrorCode::STACK_FRAME_ALLOC_FAILED);
+                }
+            }
+            frame_buffer = context->frame_buffers[context->idx];
+            remaining_frame_size = context->frame_size;
+            _stack_off = 0;
+            stack_off = 1;
+        }
+        frame_buffer[_stack_off] = Value((std::int64_t)(frame_buffer+_stack_off), remaining_frame_size, remaining_frame_size, sizeof(Value));//Contains the stack frame
+        for(std::int64_t i = 0; i < num_args; i++){
+            frame_buffer[_stack_off + 1 + i] = caller_frame_buffer[(++code)->value];
+        }
+        frame_buffer += _stack_off;
+        
+        if(context->curr_call_depth >= context->max_possible_func_call_depth){
+            context->max_possible_func_call_depth *= 2;
+            context->call_frame = (Context::CallFrame*)realloc(context->call_frame, sizeof(Context::CallFrame) * context->max_possible_func_call_depth);
+            if(context->call_frame == nullptr){
+                return ReturnValue(_pc, ReturnValue::ErrorCode::STACK_FRAME_ALLOC_FAILED);
+            }
+        }
+        context->call_frame[context->curr_call_depth] = Context::CallFrame{func_loc - code_start, stack_off, 
+                                                                           code - code_start, ret_loc_start};
+        context->curr_call_depth++;
+        GOTO(func_loc);
     }
     _L_OP_RET:{
         const auto num_ret = (++code)->value;
         for(std::int64_t i = 0; i < num_ret; i++){
-            frame_buffer[i] = frame_buffer[(++code)->value];
+            *(context->call_frame[context->curr_call_depth-1].ret_loc_start + i) = frame_buffer[(++code)->value];
         }
-        traceback_func_loc_idx--;
-        func_stack_off--;
-        ret_loc_idx--;
-        remaining_frame_size += *func_stack_off;
-        frame_buffer -= *func_stack_off;
-        code = code_start + *ret_loc_idx;
-        *traceback_func_loc_idx = -1;
-        *func_stack_off = -1;
-        *ret_loc_idx = -1;
+        context->curr_call_depth--;
+        remaining_frame_size += context->call_frame[context->curr_call_depth].func_stack_off;
+        frame_buffer -= context->call_frame[context->curr_call_depth].func_stack_off;
+        if(remaining_frame_size > context->frame_size && context->idx > 0){//IT cant happen when index is 0
+            if(context->allocated_size - context->idx > context->max_no_of_allocated_unused_frames){//After this return the current value of context->idx is the number of frames in use
+                free(context->frame_buffers[context->idx]);
+                context->allocated_size--;
+            }
+            context->idx--;
+            frame_buffer = context->old_frame[context->idx];
+            const auto buf_capacity = (context->idx == 0) ? context->first_frame_size : context->frame_size;
+            remaining_frame_size = buf_capacity - (frame_buffer - context->frame_buffers[context->idx]);
+        }
+        code = code_start + context->call_frame[context->curr_call_depth].ret_loc_idx;
         DISPATCH();
     }
     /* ---- Heap objects: arrays ---------------------------------------------*/
@@ -819,16 +915,19 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_vm(s
     OP_SIMPLE_GET_PTR_INST(OP_PTR_GET_PTR_II64, frame_buffer[(++code)->value]);
 
     _L_OP_PTR_SLICE_PTR_II64:{
-        const auto ptr = frame_buffer[(++code)->value];
+        const auto ptr = frame_buffer + (++code)->value;
         const auto num_count = (++code)->value;
-        const auto ptr_offset = frame_buffer + (++code)->value;
-        ptr_offset->type = ValueType::VT_PTR;
-        ptr_offset->is_missing = ptr.is_missing || num_count < 0 || num_count > ptr.capacity;
-        if(!ptr_offset->is_missing){
-            ptr_offset->value = ptr.value + num_count*ptr.element_size;
-            ptr_offset->length = std::min(num_count, ptr.length);
-            ptr_offset->capacity = num_count;
-            ptr_offset->element_size = ptr.element_size;
+        const auto dest_ptr = frame_buffer + (++code)->value;
+        dest_ptr->type = ValueType::VT_PTR;
+        dest_ptr->is_missing = ptr->is_missing || num_count < 0 || num_count > ptr->capacity;
+        if(!dest_ptr->is_missing){
+            dest_ptr->value = ptr->value;
+            dest_ptr->length = std::min(num_count, ptr->length);
+            dest_ptr->capacity = num_count;
+            dest_ptr->element_size = ptr->element_size;
+            ptr->value += num_count*ptr->element_size;
+            ptr->length = std::max<std::int64_t>(ptr->length - num_count, 0);
+            ptr->capacity = std::max<std::int64_t>(ptr->capacity - num_count, 0);
         }
         DISPATCH();
     }
@@ -841,16 +940,16 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_vm(s
         DISPATCH();
     }
     _L_OP_HALT:{
-        return -1;
+        return ReturnValue(-1, ReturnValue::ErrorCode::REGULAR_HALT);
     }
     _L_OP_TRAP:{
-        return code - code_start;
+        return ReturnValue(code - code_start, ReturnValue::ErrorCode::REGULAR_TRAP);
     }
     _L_OP_IF_TRUE_TRAP:{
         const auto _pc = code - code_start;
         const auto condition = frame_buffer[(++code)->value];
         if(condition.is_missing || !condition.value){
-            return _pc;
+            return ReturnValue(_pc, ReturnValue::ErrorCode::CONDITIONAL_TRAP);
         }
         else{DISPATCH();}
     }
@@ -858,25 +957,46 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_vm(s
         const auto _pc = code - code_start;
         const auto condition = frame_buffer[(++code)->value];
         if(!condition.is_missing){
-            return _pc;
+            return ReturnValue(_pc, ReturnValue::ErrorCode::MISSING_VALUE_TRAP);
         }
         else{DISPATCH();}
     }
     _L_OP_TRACE:{
-        path.push_back(code - code_start);
+        context->path[context->path_idx] = code - code_start;
+        context->path_idx++;
+        if(context->path_idx >= context->path_cap){
+            context->path_cap *= 2;
+            context->path = (std::int64_t*)realloc(context->path, sizeof(std::int64_t) * context->path_cap);
+        }
         DISPATCH();
     }
     _L_OP_IF_TRUE_TRACE:{
         const auto _pc = code - code_start;
         const auto condition = frame_buffer[(++code)->value];
-        if(condition.is_missing || !condition.value){DISPATCH();}
-        else{path.push_back(_pc); DISPATCH();}
+        if(condition.is_missing || !condition.value){}
+        else{
+            context->path[context->path_idx] = _pc;
+            context->path_idx++;
+            if(context->path_idx >= context->path_cap){
+                context->path_cap *= 2;
+                context->path = (std::int64_t*)realloc(context->path, sizeof(std::int64_t) * context->path_cap);
+            }
+        }
+        DISPATCH();
     }
     _L_OP_IF_MISSING_TRACE:{
         const auto _pc = code - code_start;
         const auto condition = frame_buffer[(++code)->value];
-        if(!condition.is_missing){DISPATCH();}
-        else{path.push_back(_pc); DISPATCH();}
+        if(!condition.is_missing){}
+        else{
+            context->path[context->path_idx] = _pc;
+            context->path_idx++;
+            if(context->path_idx >= context->path_cap){
+                context->path_cap *= 2;
+                context->path = (std::int64_t*)realloc(context->path, sizeof(std::int64_t) * context->path_cap);
+            }
+        }
+        DISPATCH();
     }
     ___L_COLD_LABEL:{
         code = execute_cold_inst(code, frame_buffer);//code on the last argument of the instruction or on the instruction if it has no argument
@@ -887,8 +1007,7 @@ VM_NOCLONE static std::int64_t __attribute__((noinline, used, hot)) execute_vm(s
 
 void set_dispatch_table(){
     execute_cold_inst(nullptr, nullptr);//This will initialize the cold_dispatch table
-    std::vector<std::int64_t> dummy_path;
-    execute_vm(0, nullptr, nullptr, nullptr, nullptr, nullptr, dummy_path, nullptr, nullptr);//This will initialize the hot_dispatch table
+    execute_vm(nullptr, nullptr, nullptr, nullptr);//This will initialize the hot_dispatch table
 }
 
 void write_addr(Value* code, std::int64_t code_size){

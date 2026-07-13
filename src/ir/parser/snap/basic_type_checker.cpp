@@ -11,6 +11,7 @@ void Parser::basic_typecheck(){
     auto functions = this->ast->get_items();
     std::vector<FunctionPtr> new_functions;
     std::unordered_map<std::string, TypeExprPtr> func_symbol_table;//TODO:Add the external function to the func symbol table also
+    std::unordered_map<std::string, bool> has_defination;
     Utils::Graph call_graph;//TODO:Add the external function to the graph also
     for(auto& func : functions){
         auto reduced_return_type = reduce_type_expr(func->get_return_type(), type_table);
@@ -29,15 +30,35 @@ void Parser::basic_typecheck(){
         auto new_func_type = std::make_shared<FuncTypeExpr>(func->get_token(), reduced_param_types, reduced_return_type);
         std::string func_name = func->get_name().value;
         if(func_symbol_table.find(func_name) != func_symbol_table.end()){
-            error(func->get_name(), "Duplicate function definition", "Function name: " + func_name);
+            if(!TypeUtils::is_type_equal(func_symbol_table[func_name], new_func_type)){
+                error(func->get_name(), "Function type mismatch for duplicate function definition", "Function name: " + func_name);
+            }
+            if(has_defination[func_name] && func->is_signature_only()){
+                error(func->get_name(), "Function declaration after definition", "Function name: " + func_name);
+            }
+            else if(has_defination[func_name]){
+                error(func->get_name(), "Duplicate function definition", "Function name: " + func_name);
+            }
+            else if(func->is_signature_only()){
+                error(func->get_name(), "Duplicate function declaration", "Function name: " + func_name);
+            }
+            std::vector<FunctionPtr> new_functions_temp;
+            for(auto& f : new_functions){
+                if(f->get_name().value != func_name){
+                    new_functions_temp.push_back(f);
+                }
+            }
+            new_functions = new_functions_temp;
         }
         func_symbol_table[func_name] = new_func_type;
         call_graph.insert_vertex(func_name);
         if(func->get_body().empty()){
             new_functions.push_back(std::make_shared<Function>(func->get_token(), func->get_name(), reduced_params, reduced_return_type, func->get_body(), func->get_debug_info(), true));
+            has_defination[func_name] = false;
         }
         else{
             new_functions.push_back(reduce_function(func, call_graph, reduced_params, type_table, func_symbol_table));
+            has_defination[func_name] = true;
         }
     }
     this->ast = std::make_shared<Program>(new_functions, call_graph, true);
@@ -270,9 +291,6 @@ LiteralExprPtr Parser::reduce_literal_expr(LiteralExprPtr literal, Utils::Graph&
             }
             if(!TypeUtils::is_type_equal(it->second, func_type)){
                 error(func_literal->get_name(), "Type mismatch for function literal", "Expected type: " + it->second->to_string() + ", but got: " + func_type->to_string());
-            }
-            if(func_literal->get_name().value == current_func){
-                error(func_literal->get_name(), "Recursive function call is not allowed", "Function name: " + func_literal->get_name().value);
             }
             auto type_params = func_type->get_param_types();
             auto value_args = func_literal->get_args();
