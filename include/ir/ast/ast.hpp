@@ -37,7 +37,7 @@ enum class TypeExprKind:std::uint8_t{
     IntTypeExpr,
     DecimalTypeExpr,
     StringTypeExpr,
-    VoidTypeExpr,
+    VoidTypeExpr,//THis type is also used by type checker to donote that the expression is not returning anything
     PtrTypeExpr,    
     ArrayTypeExpr,
     StructTypeExpr,
