@@ -13,7 +13,7 @@ Parser::Parser(const std::vector<Token>& toks, const std::string& filename){
         this->curr_tok = toks[0];
     }
     parse();
-    basic_typecheck();
+    typecheck();
 }
 void Parser::parse(){
     std::vector<FunctionPtr> items;

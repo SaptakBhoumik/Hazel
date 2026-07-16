@@ -26,8 +26,14 @@ TypeExprPtr Parser::parse_type_expr(){
         case TokenType::lbracket:{
             return parse_array_type_expr();
         }
-        case TokenType::langel:{   
-            return parse_packed_struct_type_expr();
+        case TokenType::langel:{  
+            if(peek().type == TokenType::lbracket){
+                return parse_packed_array_type_expr();
+            }
+            else{
+                return parse_packed_struct_type_expr();
+            }
+            error(peek(), "Expected '[' or '{' after '<' in packed type expression");
         }
         case TokenType::lbrace:{
             return parse_struct_type_expr();
@@ -58,12 +64,20 @@ TypeExprPtr Parser::parse_ptr_type_expr(){
     expect(TokenType::rangel, "Expected '>' after pointer element size in pointer type expression");
     return std::make_shared<PtrTypeExpr>(tok, element_size);
 }
+TypeExprPtr Parser::parse_packed_array_type_expr(){
+    Token tok = this->curr_tok;//the < token
+    expect(TokenType::lbracket, "Expected '[' after '<' in packed array type expression");
+    TypeExprPtr base_type = parse_type_expr();
+    expect(TokenType::rbracket, "Expected ']' after packed array type elements in packed array type expression");
+    expect(TokenType::rangel, "Expected '>' after packed array type elements in packed array type expression");
+    return std::make_shared<ArrayTypeExpr>(tok, base_type, true);
+}
 TypeExprPtr Parser::parse_array_type_expr(){
     Token tok = this->curr_tok;//the [ token
     advance();//After the [ token
     TypeExprPtr base_type = parse_type_expr();
     expect(TokenType::rbracket, "Expected ']' after array size in array type expression");
-    return std::make_shared<ArrayTypeExpr>(tok, base_type);
+    return std::make_shared<ArrayTypeExpr>(tok, base_type, false);
 }
 TypeExprPtr Parser::parse_packed_struct_type_expr(){
     Token tok = this->curr_tok;//the <

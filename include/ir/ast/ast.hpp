@@ -43,6 +43,10 @@ enum class TypeExprKind:std::uint8_t{
     StructTypeExpr,
     FuncTypeExpr,
     LabelTypeExpr,
+
+    AnyTypeExpr,//THis is a special type and used by the typechecker to denote it can be any type. But if this tag is used then all the other types with AnyTypeExpr must be same
+                //A special clarification. If you use this type then for ptr the underlying size need not match. And for structs and array, the packing may not match
+                //Does same for the underlying types of array and struct. But the number and general type of the field must be same
 };
 class TypeExpr{
     protected:
@@ -123,10 +127,12 @@ class ArrayTypeExpr : public TypeExpr{
     //[type] 
     Token tok;
     TypeExprPtr base_type;
+    bool packed = false;//Packed means the entire array is missing if one is missing. Default is unpacked i.e some item can be missing and some can be not missing
     public:
-    ArrayTypeExpr(Token tok, TypeExprPtr base_type);
-
+    ArrayTypeExpr(Token tok, TypeExprPtr base_type, bool packed);
+    
     TypeExprPtr get_basetype() const;
+    bool is_packed() const;
     
     std::size_t get_size() const override;
     std::string to_string() const override;
@@ -179,7 +185,7 @@ enum class LiteralKind:std::uint8_t{
     ZeroInitLiteralExpr,
     PoisonLiteralExpr,
     NamedLiteralExpr, // Stuff like name,%name,$name
-    NumLiteralExpr,//Can be float or int. We will figure out which one it is based on the type it is being assigned to
+    NumLiteralExpr,//Can be float or int or ptr. We will figure out which one it is based on the type it is being assigned to
     StringLiteralExpr,
     ArrayLiteralExpr,
     StructLiteralExpr,
@@ -247,10 +253,12 @@ class StringLiteralExpr : public LiteralExpr{
 class ArrayLiteralExpr : public LiteralExpr{
     //[elem1, elem2, ... ]
     std::vector<LiteralExprPtr> elements;
+    bool packed = false;
     public:
-    ArrayLiteralExpr(Token tok, std::vector<LiteralExprPtr> elements, TypeExprPtr type);
+    ArrayLiteralExpr(Token tok, std::vector<LiteralExprPtr> elements, bool packed, TypeExprPtr type);
 
     std::vector<LiteralExprPtr> get_elements() const;
+    bool is_packed() const;
 
     std::string to_string() const override;
 };
@@ -388,7 +396,7 @@ class Program{
 using ProgramPtr = std::shared_ptr<Program>;
 
 namespace TypeUtils{
-bool is_type_equal(TypeExprPtr type1, TypeExprPtr type2);//Expects reduced types
+bool is_type_equal(TypeExprPtr type1, TypeExprPtr type2, bool check_packing_and_underlying_size = true);//Expects reduced types
 }
 }
 }

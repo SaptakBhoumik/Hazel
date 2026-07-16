@@ -5,8 +5,8 @@
 
 namespace Hazel {
 namespace Snap{
-namespace IR {
-void Parser::basic_typecheck(){
+namespace IR { 
+void Parser::typecheck(){
     auto type_table = construct_type_table();
     auto functions = this->ast->get_items();
     std::vector<FunctionPtr> new_functions;
@@ -110,6 +110,10 @@ bool Parser::self_reference_type(TypeExprPtr type, std::string name) const{
             }
             return false;
         }
+        case TypeExprKind::AnyTypeExpr:{
+            std::cerr << "Error: AnyTypeExpr should not be present in the type table" << std::endl;
+            exit(1);
+        }
     }
     return false;
 }
@@ -148,7 +152,7 @@ TypeExprPtr Parser::reduce_type_expr(TypeExprPtr type, std::unordered_map<std::s
         case TypeExprKind::ArrayTypeExpr:{
             auto array_type = std::dynamic_pointer_cast<ArrayTypeExpr>(type);
             TypeExprPtr reduced_base_type = reduce_type_expr(array_type->get_basetype(), type_table);
-            return std::make_shared<ArrayTypeExpr>(array_type->get_token(), reduced_base_type);
+            return std::make_shared<ArrayTypeExpr>(array_type->get_token(), reduced_base_type, array_type->is_packed());
         }
         case TypeExprKind::StructTypeExpr:{
             auto struct_type = std::dynamic_pointer_cast<StructTypeExpr>(type);
@@ -174,6 +178,10 @@ TypeExprPtr Parser::reduce_type_expr(TypeExprPtr type, std::unordered_map<std::s
                 reduced_param_types.push_back(reduce_type_expr(param_type, type_table));
             }
             return std::make_shared<LabelTypeExpr>(label_type->get_token(), reduced_param_types);
+        }
+        case TypeExprKind::AnyTypeExpr:{
+            std::cerr << "Error: AnyTypeExpr should not be present in the type table" << std::endl;
+            exit(1);
         }
         //Dont add default. This will make sure that if a new type is added, we will get a compile warning here and we will have to handle it here as well. 
     }
@@ -208,8 +216,17 @@ LiteralExprPtr Parser::reduce_literal_expr(LiteralExprPtr literal, Utils::Graph&
             error(literal->get_token(), "Named literal not found in local variable or label parameter table", "Named literal: " + literal->get_token().value);
         }
         case LiteralKind::NumLiteralExpr:{
-            if(reduced_type->get_kind() != TypeExprKind::IntTypeExpr && reduced_type->get_kind() != TypeExprKind::DecimalTypeExpr){
-                error(literal->get_token(), "Type mismatch for numeric literal", "Expected type: int or decimal, but got: " + reduced_type->to_string());
+            if(reduced_type->get_kind() != TypeExprKind::IntTypeExpr && reduced_type->get_kind() != TypeExprKind::DecimalTypeExpr && reduced_type->get_kind() != TypeExprKind::PtrTypeExpr){
+                error(literal->get_token(), "Type mismatch for numeric literal", "Expected type: int or decimal or ptr, but got: " + reduced_type->to_string());
+            }
+            if(reduced_type->get_kind() == TypeExprKind::PtrTypeExpr){
+                auto str = literal->get_token().value;
+                size_t i = (str[0] == '+') ? 1 : 0;
+                for(; i < str.size(); i++){
+                    if(!std::isxdigit(str[i])){
+                        error(literal->get_token(), "Invalid pointer literal", "Pointer literal must be a regular number, but got: " + str);
+                    }
+                }
             }
             return literal;
         }
@@ -230,7 +247,10 @@ LiteralExprPtr Parser::reduce_literal_expr(LiteralExprPtr literal, Utils::Graph&
                 elements[i]->set_type(array_type->get_basetype());
                 reduce_literal_expr(elements[i], call_graph, current_func, type_table, func_symbol_table, label_symbol_table, local_var_table, label_param_table);
             }
-            return std::make_shared<ArrayLiteralExpr>(array_literal->get_token(), elements, array_type);
+            if(array_literal->is_packed() != array_type->is_packed()){
+                error(literal->get_token(), "Packed attribute mismatch for array literal", "Expected packed: " + std::string(array_type->is_packed() ? "true" : "false") + ", but got: " + std::string(array_literal->is_packed() ? "true" : "false"));
+            }
+            return std::make_shared<ArrayLiteralExpr>(array_literal->get_token(), elements, array_literal->is_packed(), array_type);
         }
         case LiteralKind::StructLiteralExpr:{
             if(reduced_type->get_kind() != TypeExprKind::StructTypeExpr){
@@ -357,7 +377,9 @@ FunctionPtr Parser::reduce_function(FunctionPtr func, Utils::Graph& call_graph, 
                 local_var_table[var_name.value] = reduced_var_type;
                 new_name = std::make_pair(var_name, reduced_var_type);
             }
-            new_statements.push_back(std::make_shared<InstructionStmt>(stmt->get_token(), stmt->get_instruction(), new_name, new_params, stmt->get_debug_info()));
+            auto new_inst = std::make_shared<InstructionStmt>(stmt->get_token(), stmt->get_instruction(), new_name, new_params, stmt->get_debug_info());
+            typecheck_inst(new_inst, func_symbol_table[func_name]);
+            new_statements.push_back(new_inst);
         }
         new_labels.push_back(std::make_shared<Label>(label->get_token(), label->get_name(), new_statements, label->get_params(), label->get_debug_info(), true));
     }

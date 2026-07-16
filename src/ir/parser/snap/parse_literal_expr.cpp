@@ -32,7 +32,13 @@ LiteralExprPtr Parser::parse_literal_expr(bool parse_type){
             return parse_array_literal_expr(type);
         }
         case TokenType::langel:{
-            return parse_packed_struct_literal_expr(type);
+            if(peek().type == TokenType::lbracket){
+                return parse_packed_array_literal_expr(type);
+            }
+            else{
+                return parse_packed_struct_literal_expr(type);
+            }
+            error(peek(), "Expected '[' or '{' after '<' in packed literal expression");
         }
         case TokenType::lbrace:{
             return parse_struct_literal_expr(type);
@@ -49,7 +55,24 @@ LiteralExprPtr Parser::parse_literal_expr(bool parse_type){
         }
     }
 }
-
+LiteralExprPtr Parser::parse_packed_array_literal_expr(TypeExprPtr type){
+    Token tok = this->curr_tok;//the < token
+    expect(TokenType::lbracket, "Expected '[' after '<' in packed array literal expression");
+    std::vector<LiteralExprPtr> elements;
+    while(peek().type != TokenType::rbracket){
+        advance();//After the [ token or the , token
+        elements.push_back(parse_literal_expr(false));
+        if(peek().type == TokenType::comma){
+            advance();//On the , token
+        }
+        else if(peek().type != TokenType::rbracket){
+            error(peek(), "Expected ',' or ']' after array literal element in array literal expression");
+        }
+    }
+    expect(TokenType::rbracket, "Expected ']' after array literal elements in array literal expression");
+    expect(TokenType::rangel, "Expected '>' after packed array literal elements in packed array literal expression");
+    return std::make_shared<ArrayLiteralExpr>(tok, elements, true, type);
+}
 LiteralExprPtr Parser::parse_array_literal_expr(TypeExprPtr type){
     Token tok = this->curr_tok;//the [ token
     std::vector<LiteralExprPtr> elements;
@@ -64,7 +87,7 @@ LiteralExprPtr Parser::parse_array_literal_expr(TypeExprPtr type){
         }
     }
     expect(TokenType::rbracket, "Expected ']' after array literal elements in array literal expression");
-    return std::make_shared<ArrayLiteralExpr>(tok, elements, type);
+    return std::make_shared<ArrayLiteralExpr>(tok, elements, false, type);
 }
 LiteralExprPtr Parser::parse_packed_struct_literal_expr(TypeExprPtr type){
     Token tok = this->curr_tok;//the < token

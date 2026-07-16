@@ -294,7 +294,7 @@ std::string Program::to_string() const{
 }
 
 namespace TypeUtils{
-bool is_type_equal(TypeExprPtr type1, TypeExprPtr type2){
+bool is_type_equal(TypeExprPtr type1, TypeExprPtr type2, bool check_packing_and_underlying_size){
     if(type1->get_kind() != type2->get_kind()){
         return false;
     }
@@ -313,12 +313,18 @@ bool is_type_equal(TypeExprPtr type1, TypeExprPtr type2){
         case TypeExprKind::PtrTypeExpr:{
             auto ptr_type1 = std::dynamic_pointer_cast<PtrTypeExpr>(type1);
             auto ptr_type2 = std::dynamic_pointer_cast<PtrTypeExpr>(type2);
+            if(!check_packing_and_underlying_size){
+                return true;
+            }
             return ptr_type1->get_element_size() == ptr_type2->get_element_size();
         }
         case TypeExprKind::ArrayTypeExpr:{
             auto array_type1 = std::dynamic_pointer_cast<ArrayTypeExpr>(type1);
             auto array_type2 = std::dynamic_pointer_cast<ArrayTypeExpr>(type2);
-            return is_type_equal(array_type1->get_basetype(), array_type2->get_basetype());
+            if(!check_packing_and_underlying_size){
+                return is_type_equal(array_type1->get_basetype(), array_type2->get_basetype(), check_packing_and_underlying_size);
+            }
+            return is_type_equal(array_type1->get_basetype(), array_type2->get_basetype(), check_packing_and_underlying_size) && array_type1->is_packed() == array_type2->is_packed();
         }
         case TypeExprKind::StructTypeExpr:{
             auto struct_type1 = std::dynamic_pointer_cast<StructTypeExpr>(type1);
@@ -329,9 +335,12 @@ bool is_type_equal(TypeExprPtr type1, TypeExprPtr type2){
                 return false;
             }
             for(size_t i=0;i<fields1.size();i++){
-                if(!is_type_equal(fields1[i], fields2[i])){
+                if(!is_type_equal(fields1[i], fields2[i], check_packing_and_underlying_size)){
                     return false;
                 }
+            }
+            if(!check_packing_and_underlying_size){
+                return true;
             }
             return struct_type1->is_packed() == struct_type2->is_packed();
         }
@@ -344,11 +353,11 @@ bool is_type_equal(TypeExprPtr type1, TypeExprPtr type2){
                 return false;
             }
             for(size_t i=0;i<params1.size();i++){
-                if(!is_type_equal(params1[i], params2[i])){
+                if(!is_type_equal(params1[i], params2[i], check_packing_and_underlying_size)){
                     return false;
                 }
             }
-            return is_type_equal(func_type1->get_return_type(), func_type2->get_return_type());
+            return is_type_equal(func_type1->get_return_type(), func_type2->get_return_type(), check_packing_and_underlying_size);
         }
         case TypeExprKind::LabelTypeExpr:{
             auto label_type1 = std::dynamic_pointer_cast<LabelTypeExpr>(type1);
@@ -359,11 +368,14 @@ bool is_type_equal(TypeExprPtr type1, TypeExprPtr type2){
                 return false;
             }
             for(size_t i=0;i<params1.size();i++){
-                if(!is_type_equal(params1[i], params2[i])){
+                if(!is_type_equal(params1[i], params2[i], check_packing_and_underlying_size)){
                     return false;
                 }
             }
             return true;
+        }
+        case TypeExprKind::AnyTypeExpr:{
+            return false;//The callee should check
         }
     }
     return false;

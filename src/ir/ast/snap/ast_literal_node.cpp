@@ -73,22 +73,26 @@ std::string StringLiteralExpr::to_string() const{
 }
 
 
-ArrayLiteralExpr::ArrayLiteralExpr(Token tok, std::vector<LiteralExprPtr> elements, TypeExprPtr type)
+ArrayLiteralExpr::ArrayLiteralExpr(Token tok, std::vector<LiteralExprPtr> elements, bool packed, TypeExprPtr type)
     : LiteralExpr(tok, LiteralKind::ArrayLiteralExpr, type){
     this->elements = elements;
+    this->packed = packed;
 }
 std::vector<LiteralExprPtr> ArrayLiteralExpr::get_elements() const{
     return this->elements;
 }
+bool ArrayLiteralExpr::is_packed() const{
+    return this->packed;
+}
 std::string ArrayLiteralExpr::to_string() const{
-    std::string res = (this->type != nullptr ? this->type->to_string() + ": " : "") + "[";
+    std::string res = (this->type != nullptr ? this->type->to_string() + ": " : "") + (this->packed ? "<[" : "[");
     for(size_t i=0;i<this->elements.size();i++){
         res += this->elements[i]->to_string();
         if(i!=this->elements.size()-1){
             res += ", ";
         }
     }
-    return res+"]";
+    return res+(this->packed ? "]>" : "]");
 }
 
 

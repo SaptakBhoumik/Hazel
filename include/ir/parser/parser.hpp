@@ -24,6 +24,7 @@ class Parser {
     // Parse type expressions
     TypeExprPtr parse_type_expr();
     TypeExprPtr parse_ptr_type_expr();
+    TypeExprPtr parse_packed_array_type_expr();
     TypeExprPtr parse_array_type_expr();
     TypeExprPtr parse_packed_struct_type_expr();
     TypeExprPtr parse_struct_type_expr();
@@ -32,6 +33,7 @@ class Parser {
 
     // Parse literal expressions
     LiteralExprPtr parse_literal_expr(bool parse_type);//If true then we parse the type of the literal as well
+    LiteralExprPtr parse_packed_array_literal_expr(TypeExprPtr type);
     LiteralExprPtr parse_array_literal_expr(TypeExprPtr type);
     LiteralExprPtr parse_packed_struct_literal_expr(TypeExprPtr type);
     LiteralExprPtr parse_struct_literal_expr(TypeExprPtr type);
@@ -50,7 +52,8 @@ class Parser {
     void parse();
 
 
-    void basic_typecheck();//Not the full thing. IT doesnt check if the types are proper for the instruction. It does a basic symbol table and that is all. Need seperate check for that
+    void typecheck();//Not the full thing. IT doesnt check if the types are proper for the instruction. It does a basic symbol table and that is all. Need seperate check for that
+    void typecheck_inst(InstructionStmtPtr stmt, TypeExprPtr curr_func_type) const;//For ret 
     bool self_reference_type(TypeExprPtr type, std::string name) const;
     std::unordered_map<std::string, TypeExprPtr> construct_type_table() const;//Constructs a type table from the global typedefs. The types in the type table are reduced types
     //The types in type_table are expected to be reduced types.

@@ -95,19 +95,26 @@ std::string PtrTypeExpr::to_string() const{
 }
 
 
-ArrayTypeExpr::ArrayTypeExpr(Token tok, TypeExprPtr base_type)
+ArrayTypeExpr::ArrayTypeExpr(Token tok, TypeExprPtr base_type, bool packed)
     : TypeExpr(tok, TypeExprKind::ArrayTypeExpr){
     this->tok = tok;
     this->base_type = base_type;
+    this->packed = packed;
 }
 TypeExprPtr ArrayTypeExpr::get_basetype() const{
     return this->base_type;
 }
+bool ArrayTypeExpr::is_packed() const{
+    return this->packed;
+}
 std::size_t ArrayTypeExpr::get_size() const{
-    return 8+8+8+2+1;//8 bytes for pointer, 8 bytes for length, 8 bytes for capacity, 2 bytes for element size, 1 byte for is missing field
+    if(this->packed){
+        return 8+8+8+2+1;//8 bytes for pointer, 8 bytes for length, 8 bytes for capacity, 2 bytes for element size, 1 byte for is missing field
+    }
+    return 8+8+8+2;//8 bytes for pointer, 8 bytes for length, 8 bytes for capacity, 2 bytes for element size
 }
 std::string ArrayTypeExpr::to_string() const{
-    return "[" + this->base_type->to_string() + "]";
+    return (this->packed ? "<[" : "[") + this->base_type->to_string() + (this->packed ? "]>" : "]");
 }
 
 

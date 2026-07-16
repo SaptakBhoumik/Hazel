@@ -94,15 +94,15 @@ VM_NOCLONE Value* __attribute__((noinline, used, cold)) execute_cold_inst(Value*
         COLD_INSERT(OP_I64_UNSIGNED_CMP_PTR_PTR_I64);
 
         /*----Time series related--------------------------------------*/
-        COLD_INSERT(OP_I64_BINARY_FIND_GE_PTR_I64_I64_I64FLOAT); 
-        COLD_INSERT(OP_I64_BINARY_FIND_LE_PTR_I64_I64_I64FLOAT);  
-        COLD_INSERT(OP_I64_BINARY_FIND_GE_PTR_II64_I64_I64FLOAT);
-        COLD_INSERT(OP_I64_BINARY_FIND_LE_PTR_II64_I64_I64FLOAT);
+        // COLD_INSERT(OP_I64_BINARY_FIND_GE_PTR_I64_I64_I64FLOAT); 
+        // COLD_INSERT(OP_I64_BINARY_FIND_LE_PTR_I64_I64_I64FLOAT);  
+        // COLD_INSERT(OP_I64_BINARY_FIND_GE_PTR_II64_I64_I64FLOAT);
+        // COLD_INSERT(OP_I64_BINARY_FIND_LE_PTR_II64_I64_I64FLOAT);
 
-        COLD_INSERT(OP_I64_BINARY_FIND_GE_PTR_I64_I64FLOAT); 
-        COLD_INSERT(OP_I64_BINARY_FIND_LE_PTR_I64_I64FLOAT);  
-        COLD_INSERT(OP_I64_BINARY_FIND_GE_PTR_II64_I64FLOAT);
-        COLD_INSERT(OP_I64_BINARY_FIND_LE_PTR_II64_I64FLOAT);
+        // COLD_INSERT(OP_I64_BINARY_FIND_GE_PTR_I64_I64FLOAT); 
+        // COLD_INSERT(OP_I64_BINARY_FIND_LE_PTR_I64_I64FLOAT);  
+        // COLD_INSERT(OP_I64_BINARY_FIND_GE_PTR_II64_I64FLOAT);
+        // COLD_INSERT(OP_I64_BINARY_FIND_LE_PTR_II64_I64FLOAT);
 
         /*-------Traceback--------------------------------*/
         COLD_INSERT(OP_PRINT_PTR);
@@ -398,16 +398,16 @@ VM_NOCLONE Value* __attribute__((noinline, used, cold)) execute_cold_inst(Value*
         }
         return code;
     }
-    /*----Time series related--------------------------------------*/
-    OP_SIMPLE_COLD_BINARY_FIND_TYPE1_INST(OP_I64_BINARY_FIND_GE_PTR_I64_I64_I64FLOAT, frame_buffer[(++code)->value], frame_buffer[(++code)->value], frame_buffer[(++code)->value], frame_buffer[(++code)->value], first_ge((std::int64_t*)(ptr.value+start_idx.value*ptr.element_size), size.value, value.value), result_ptr->value == size.value); 
-    OP_SIMPLE_COLD_BINARY_FIND_TYPE1_INST(OP_I64_BINARY_FIND_LE_PTR_I64_I64_I64FLOAT, frame_buffer[(++code)->value], frame_buffer[(++code)->value], frame_buffer[(++code)->value], frame_buffer[(++code)->value], first_le((std::int64_t*)(ptr.value+start_idx.value*ptr.element_size), size.value, value.value), result_ptr->value == -1); 
-    OP_SIMPLE_COLD_BINARY_FIND_TYPE1_INST(OP_I64_BINARY_FIND_GE_PTR_II64_I64_I64FLOAT, frame_buffer[(++code)->value], *(++code), frame_buffer[(++code)->value], frame_buffer[(++code)->value],  first_ge((std::int64_t*)(ptr.value+start_idx.value*ptr.element_size), size.value, value.value), result_ptr->value == size.value);
-    OP_SIMPLE_COLD_BINARY_FIND_TYPE1_INST(OP_I64_BINARY_FIND_LE_PTR_II64_I64_I64FLOAT, frame_buffer[(++code)->value], *(++code), frame_buffer[(++code)->value], frame_buffer[(++code)->value], first_le((std::int64_t*)(ptr.value+start_idx.value*ptr.element_size), size.value, value.value), result_ptr->value == -1);
+    // /*----Time series related--------------------------------------*/
+    // OP_SIMPLE_COLD_BINARY_FIND_TYPE1_INST(OP_I64_BINARY_FIND_GE_PTR_I64_I64_I64FLOAT, frame_buffer[(++code)->value], frame_buffer[(++code)->value], frame_buffer[(++code)->value], frame_buffer[(++code)->value], first_ge((std::int64_t*)(ptr.value+start_idx.value*ptr.element_size), size.value, value.value), result_ptr->value == size.value); 
+    // OP_SIMPLE_COLD_BINARY_FIND_TYPE1_INST(OP_I64_BINARY_FIND_LE_PTR_I64_I64_I64FLOAT, frame_buffer[(++code)->value], frame_buffer[(++code)->value], frame_buffer[(++code)->value], frame_buffer[(++code)->value], first_le((std::int64_t*)(ptr.value+start_idx.value*ptr.element_size), size.value, value.value), result_ptr->value == -1); 
+    // OP_SIMPLE_COLD_BINARY_FIND_TYPE1_INST(OP_I64_BINARY_FIND_GE_PTR_II64_I64_I64FLOAT, frame_buffer[(++code)->value], *(++code), frame_buffer[(++code)->value], frame_buffer[(++code)->value],  first_ge((std::int64_t*)(ptr.value+start_idx.value*ptr.element_size), size.value, value.value), result_ptr->value == size.value);
+    // OP_SIMPLE_COLD_BINARY_FIND_TYPE1_INST(OP_I64_BINARY_FIND_LE_PTR_II64_I64_I64FLOAT, frame_buffer[(++code)->value], *(++code), frame_buffer[(++code)->value], frame_buffer[(++code)->value], first_le((std::int64_t*)(ptr.value+start_idx.value*ptr.element_size), size.value, value.value), result_ptr->value == -1);
 
-    OP_SIMPLE_COLD_BINARY_FIND_TYPE2_INST(OP_I64_BINARY_FIND_GE_PTR_I64_I64FLOAT, frame_buffer[(++code)->value], frame_buffer[(++code)->value], frame_buffer[(++code)->value], first_ge((std::int64_t*)(ptr.value+start_idx.value*ptr.element_size), size, value.value), result_ptr->value == size); 
-    OP_SIMPLE_COLD_BINARY_FIND_TYPE2_INST(OP_I64_BINARY_FIND_LE_PTR_I64_I64FLOAT, frame_buffer[(++code)->value], frame_buffer[(++code)->value], frame_buffer[(++code)->value], first_le((std::int64_t*)(ptr.value+start_idx.value*ptr.element_size), size, value.value), result_ptr->value == -1); 
-    OP_SIMPLE_COLD_BINARY_FIND_TYPE2_INST(OP_I64_BINARY_FIND_GE_PTR_II64_I64FLOAT, frame_buffer[(++code)->value], *(++code), frame_buffer[(++code)->value], first_ge((std::int64_t*)(ptr.value+start_idx.value*ptr.element_size), size, value.value), result_ptr->value == size);
-    OP_SIMPLE_COLD_BINARY_FIND_TYPE2_INST(OP_I64_BINARY_FIND_LE_PTR_II64_I64FLOAT, frame_buffer[(++code)->value], *(++code), frame_buffer[(++code)->value], first_le((std::int64_t*)(ptr.value+start_idx.value*ptr.element_size), size, value.value), result_ptr->value == -1);
+    // OP_SIMPLE_COLD_BINARY_FIND_TYPE2_INST(OP_I64_BINARY_FIND_GE_PTR_I64_I64FLOAT, frame_buffer[(++code)->value], frame_buffer[(++code)->value], frame_buffer[(++code)->value], first_ge((std::int64_t*)(ptr.value+start_idx.value*ptr.element_size), size, value.value), result_ptr->value == size); 
+    // OP_SIMPLE_COLD_BINARY_FIND_TYPE2_INST(OP_I64_BINARY_FIND_LE_PTR_I64_I64FLOAT, frame_buffer[(++code)->value], frame_buffer[(++code)->value], frame_buffer[(++code)->value], first_le((std::int64_t*)(ptr.value+start_idx.value*ptr.element_size), size, value.value), result_ptr->value == -1); 
+    // OP_SIMPLE_COLD_BINARY_FIND_TYPE2_INST(OP_I64_BINARY_FIND_GE_PTR_II64_I64FLOAT, frame_buffer[(++code)->value], *(++code), frame_buffer[(++code)->value], first_ge((std::int64_t*)(ptr.value+start_idx.value*ptr.element_size), size, value.value), result_ptr->value == size);
+    // OP_SIMPLE_COLD_BINARY_FIND_TYPE2_INST(OP_I64_BINARY_FIND_LE_PTR_II64_I64FLOAT, frame_buffer[(++code)->value], *(++code), frame_buffer[(++code)->value], first_le((std::int64_t*)(ptr.value+start_idx.value*ptr.element_size), size, value.value), result_ptr->value == -1);
 
     /*-------Traceback--------------------------------*/
     _L_OP_PRINT_PTR:{
@@ -516,7 +516,7 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
     
         /* ---- Comparison Instruction ------------------*/
         INSERT(OP_I64_EQ_PTRI64FLOAT_PTRI64FLOAT);
-        INSERT(OP_I64_NEQ_PTRI64FLOAT_PTRI64FLOAT);
+        INSERT(OP_I64_NE_PTRI64FLOAT_PTRI64FLOAT);
         INSERT(OP_I64_GT_PTRI64FLOAT_PTRI64FLOAT);
         INSERT(OP_I64_GE_PTRI64FLOAT_PTRI64FLOAT);
         INSERT(OP_I64_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOAT);
@@ -525,7 +525,7 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
         INSERT_COLD(OP_I64_NOT_IN_RANGE_PTR_PTR_PTR_I64);
 
         INSERT(OP_I64_EQ_PTRI64FLOAT_PTRI64FLOATI);
-        INSERT(OP_I64_NEQ_PTRI64FLOAT_PTRI64FLOATI);
+        INSERT(OP_I64_NE_PTRI64FLOAT_PTRI64FLOATI);
         INSERT(OP_I64_GT_PTRI64FLOAT_PTRI64FLOATI);
         INSERT(OP_I64_GE_PTRI64FLOAT_PTRI64FLOATI);
         INSERT(OP_I64_GT_PTRI64FLOATI_PTRI64FLOAT);
@@ -552,6 +552,7 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
         INSERT(OP_BR_GT_PTRI64FLOAT_PTRI64FLOAT);
         INSERT(OP_BR_OR_I64_I64);
         INSERT(OP_BR_AND_I64_I64);
+        INSERT(OP_BR_XOR_I64_I64);
         INSERT(OP_BR_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOAT);
         INSERT_COLD(OP_BR_IN_RANGE_PTR_PTR_PTR_I64);
         
@@ -563,7 +564,6 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
     
         /*--------Regular branch-----*/
         INSERT(OP_BR);
-        INSERT(OP_BR_TRUE);
 
         /* ---- Calls --------------------------------------- */
         INSERT(OP_EXTERN_CALL_PTR);
@@ -610,15 +610,15 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
         INSERT_COLD(OP_I64_UNSIGNED_CMP_PTR_PTR_I64);
         
         /*----Time series related--------------------------------------*/
-        INSERT_COLD(OP_I64_BINARY_FIND_GE_PTR_I64_I64_I64FLOAT); 
-        INSERT_COLD(OP_I64_BINARY_FIND_LE_PTR_I64_I64_I64FLOAT);  
-        INSERT_COLD(OP_I64_BINARY_FIND_GE_PTR_II64_I64_I64FLOAT);
-        INSERT_COLD(OP_I64_BINARY_FIND_LE_PTR_II64_I64_I64FLOAT);
+        // INSERT_COLD(OP_I64_BINARY_FIND_GE_PTR_I64_I64_I64FLOAT); 
+        // INSERT_COLD(OP_I64_BINARY_FIND_LE_PTR_I64_I64_I64FLOAT);  
+        // INSERT_COLD(OP_I64_BINARY_FIND_GE_PTR_II64_I64_I64FLOAT);
+        // INSERT_COLD(OP_I64_BINARY_FIND_LE_PTR_II64_I64_I64FLOAT);
 
-        INSERT_COLD(OP_I64_BINARY_FIND_GE_PTR_I64_I64FLOAT); 
-        INSERT_COLD(OP_I64_BINARY_FIND_LE_PTR_I64_I64FLOAT);  
-        INSERT_COLD(OP_I64_BINARY_FIND_GE_PTR_II64_I64FLOAT);
-        INSERT_COLD(OP_I64_BINARY_FIND_LE_PTR_II64_I64FLOAT);
+        // INSERT_COLD(OP_I64_BINARY_FIND_GE_PTR_I64_I64FLOAT); 
+        // INSERT_COLD(OP_I64_BINARY_FIND_LE_PTR_I64_I64FLOAT);  
+        // INSERT_COLD(OP_I64_BINARY_FIND_GE_PTR_II64_I64FLOAT);
+        // INSERT_COLD(OP_I64_BINARY_FIND_LE_PTR_II64_I64FLOAT);
 
         /*-------Traceback--------------------------------*/
         INSERT_COLD(OP_PRINT_PTR);
@@ -733,7 +733,7 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
 
     /* ---- Comparison Instruction ------------------*/
     OP_SIMPLE_CMP_BINARY_INST(OP_I64_EQ_PTRI64FLOAT_PTRI64FLOAT, frame_buffer[(++code)->value], frame_buffer[(++code)->value], lhs.value == rhs.value, lhs.is_missing || rhs.is_missing);
-    OP_SIMPLE_CMP_BINARY_INST(OP_I64_NEQ_PTRI64FLOAT_PTRI64FLOAT, frame_buffer[(++code)->value], frame_buffer[(++code)->value], lhs.value != rhs.value, lhs.is_missing || rhs.is_missing);
+    OP_SIMPLE_CMP_BINARY_INST(OP_I64_NE_PTRI64FLOAT_PTRI64FLOAT, frame_buffer[(++code)->value], frame_buffer[(++code)->value], lhs.value != rhs.value, lhs.is_missing || rhs.is_missing);
     OP_SIMPLE_CMP_BINARY_INST(OP_I64_GT_PTRI64FLOAT_PTRI64FLOAT, frame_buffer[(++code)->value], frame_buffer[(++code)->value], lhs.value > rhs.value, lhs.is_missing || rhs.is_missing);
     OP_SIMPLE_CMP_BINARY_INST(OP_I64_GE_PTRI64FLOAT_PTRI64FLOAT, frame_buffer[(++code)->value], frame_buffer[(++code)->value], lhs.value >= rhs.value, lhs.is_missing || rhs.is_missing);
     OP_SIMPLE_IN_RANGE_INST(OP_I64_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOAT, 
@@ -748,7 +748,7 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
                             arg1.is_missing || arg2.is_missing || arg3.is_missing || arg4.is_missing);
     
     OP_SIMPLE_CMP_BINARY_INST(OP_I64_EQ_PTRI64FLOAT_PTRI64FLOATI, frame_buffer[(++code)->value], (++code)->value, lhs.value == rhs, lhs.is_missing);
-    OP_SIMPLE_CMP_BINARY_INST(OP_I64_NEQ_PTRI64FLOAT_PTRI64FLOATI, frame_buffer[(++code)->value], (++code)->value, lhs.value != rhs, lhs.is_missing);
+    OP_SIMPLE_CMP_BINARY_INST(OP_I64_NE_PTRI64FLOAT_PTRI64FLOATI, frame_buffer[(++code)->value], (++code)->value, lhs.value != rhs, lhs.is_missing);
     OP_SIMPLE_CMP_BINARY_INST(OP_I64_GT_PTRI64FLOAT_PTRI64FLOATI, frame_buffer[(++code)->value], (++code)->value, lhs.value > rhs, lhs.is_missing);
     OP_SIMPLE_CMP_BINARY_INST(OP_I64_GE_PTRI64FLOAT_PTRI64FLOATI, frame_buffer[(++code)->value], (++code)->value, lhs.value >= rhs, lhs.is_missing);
     OP_SIMPLE_CMP_BINARY_INST(OP_I64_GT_PTRI64FLOATI_PTRI64FLOAT, (++code)->value, frame_buffer[(++code)->value], lhs > rhs.value, rhs.is_missing);
@@ -773,6 +773,7 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
     OP_SIMPLE_BR_BINARY_CMP_INST(OP_BR_GT_PTRI64FLOAT_PTRI64FLOAT, frame_buffer[(++code)->value], frame_buffer[(++code)->value], lhs.value > rhs.value, lhs.is_missing || rhs.is_missing);
     OP_SIMPLE_BR_BINARY_CMP_INST(OP_BR_OR_I64_I64, frame_buffer[(++code)->value], frame_buffer[(++code)->value], lhs.value || rhs.value, lhs.is_missing || rhs.is_missing);
     OP_SIMPLE_BR_BINARY_CMP_INST(OP_BR_AND_I64_I64, frame_buffer[(++code)->value], frame_buffer[(++code)->value], lhs.value && rhs.value, lhs.is_missing || rhs.is_missing);
+    OP_SIMPLE_BR_BINARY_CMP_INST(OP_BR_XOR_I64_I64, frame_buffer[(++code)->value], frame_buffer[(++code)->value], lhs.value ^ rhs.value, lhs.is_missing || rhs.is_missing);
     OP_SIMPLE_BR_IN_RANGE_INST(OP_BR_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOAT, 
                                frame_buffer[(++code)->value], frame_buffer[(++code)->value], 
                                frame_buffer[(++code)->value], frame_buffer[(++code)->value], 
@@ -791,15 +792,6 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
     /*--------Regular branch-----*/
     _L_OP_BR:{
         GOTO((Value*)((++code)->value));
-    }
-    _L_OP_BR_TRUE:{
-        const auto condition = frame_buffer[(++code)->value];
-        const auto label1 = (Value*)((++code)->value);
-        const auto label2 = (Value*)((++code)->value);
-        const auto label3 = (Value*)((++code)->value);
-        if(condition.is_missing){GOTO(label3);}
-        else if(condition.value){GOTO(label1);}
-        else{GOTO(label2);}
     }
 
     /* ---- Calls --------------------------------------- */
@@ -834,7 +826,7 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
     }
     _L_OP_CALL:{
         const auto _pc = code - code_start;
-        if(context->func_call_depth_ceil >= 0 && context->curr_call_depth >= context->func_call_depth_ceil){
+        if(context->func_call_depth_ceil >= 0 && context->curr_call_depth >= context->func_call_depth_ceil) [[unlikely]]{
             return ReturnValue(_pc, ReturnValue::ErrorCode::CALL_DEPTH_EXCEEDED);
         }
         const auto func_loc = (Value*)((++code)->value);
@@ -847,21 +839,21 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
         const auto caller_frame_buffer = frame_buffer;  
 
         remaining_frame_size -= stack_off;
-        if(remaining_frame_size < needed_stack_size){
+        if(remaining_frame_size < needed_stack_size) [[unlikely]]{
             context->old_frame[context->idx] = frame_buffer;
             context->idx++;
-            if(context->idx >= context->size){
+            if(context->idx >= context->size) [[unlikely]]{
                 context->size *= 2;
                 context->frame_buffers = (Value**)realloc(context->frame_buffers, sizeof(Value*) * context->size);
                 context->old_frame = (Value**)realloc(context->old_frame, sizeof(Value*) * context->size);
-                if(context->frame_buffers == nullptr || context->old_frame == nullptr){
+                if(context->frame_buffers == nullptr || context->old_frame == nullptr) [[unlikely]] {
                     return ReturnValue(_pc, ReturnValue::ErrorCode::STACK_FRAME_ALLOC_FAILED);
                 }
             }
             if(context->idx >= context->allocated_size){
                 context->allocated_size++;
                 context->frame_buffers[context->idx] = (Value*)malloc(sizeof(Value) * context->frame_size);
-                if(context->frame_buffers[context->idx] == nullptr){
+                if(context->frame_buffers[context->idx] == nullptr) [[unlikely]] {
                     return ReturnValue(_pc, ReturnValue::ErrorCode::STACK_FRAME_ALLOC_FAILED);
                 }
             }
@@ -876,10 +868,10 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
         }
         frame_buffer += _stack_off;
         
-        if(context->curr_call_depth >= context->max_possible_func_call_depth){
+        if(context->curr_call_depth >= context->max_possible_func_call_depth) [[unlikely]]{
             context->max_possible_func_call_depth *= 2;
             context->call_frame = (Context::CallFrame*)realloc(context->call_frame, sizeof(Context::CallFrame) * context->max_possible_func_call_depth);
-            if(context->call_frame == nullptr){
+            if(context->call_frame == nullptr) [[unlikely]]{
                 return ReturnValue(_pc, ReturnValue::ErrorCode::STACK_FRAME_ALLOC_FAILED);
             }
         }
@@ -896,7 +888,7 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
         context->curr_call_depth--;
         remaining_frame_size += context->call_frame[context->curr_call_depth].func_stack_off;
         frame_buffer -= context->call_frame[context->curr_call_depth].func_stack_off;
-        if(remaining_frame_size > context->frame_size && context->idx > 0){//IT cant happen when index is 0
+        if(remaining_frame_size > context->frame_size && context->idx > 0) [[unlikely]]{//IT cant happen when index is 0
             if(context->allocated_size - context->idx > context->max_no_of_allocated_unused_frames){//After this return the current value of context->idx is the number of frames in use
                 free(context->frame_buffers[context->idx]);
                 context->allocated_size--;
@@ -936,16 +928,16 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
     OP_SIMPLE_SET_PTR_INST(OP_SET_PTR_II64_PTR, frame_buffer[(++code)->value], frame_buffer[(++code)->value]);
 
     /* ---- No-ops / control -------------------------------------------- */
-    _L_OP_NOP:{
+    _L_OP_NOP: [[likely]] {
         DISPATCH();
     }
-    _L_OP_HALT:{
+    _L_OP_HALT: [[unlikely]] {
         return ReturnValue(-1, ReturnValue::ErrorCode::REGULAR_HALT);
     }
-    _L_OP_TRAP:{
+    _L_OP_TRAP: [[unlikely]] {
         return ReturnValue(code - code_start, ReturnValue::ErrorCode::REGULAR_TRAP);
     }
-    _L_OP_IF_TRUE_TRAP:{
+    _L_OP_IF_TRUE_TRAP: [[unlikely]] {
         const auto _pc = code - code_start;
         const auto condition = frame_buffer[(++code)->value];
         if(condition.is_missing || !condition.value){
@@ -953,7 +945,7 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
         }
         else{DISPATCH();}
     }
-    _L_OP_IF_MISSING_TRAP:{
+    _L_OP_IF_MISSING_TRAP: [[unlikely]] {
         const auto _pc = code - code_start;
         const auto condition = frame_buffer[(++code)->value];
         if(!condition.is_missing){
@@ -961,7 +953,7 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
         }
         else{DISPATCH();}
     }
-    _L_OP_TRACE:{
+    _L_OP_TRACE: [[likely]] {
         context->path[context->path_idx] = code - code_start;
         context->path_idx++;
         if(context->path_idx >= context->path_cap){
@@ -970,7 +962,7 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
         }
         DISPATCH();
     }
-    _L_OP_IF_TRUE_TRACE:{
+    _L_OP_IF_TRUE_TRACE: [[likely]] {
         const auto _pc = code - code_start;
         const auto condition = frame_buffer[(++code)->value];
         if(condition.is_missing || !condition.value){}
@@ -984,7 +976,7 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
         }
         DISPATCH();
     }
-    _L_OP_IF_MISSING_TRACE:{
+    _L_OP_IF_MISSING_TRACE: [[likely]] {
         const auto _pc = code - code_start;
         const auto condition = frame_buffer[(++code)->value];
         if(!condition.is_missing){}
@@ -998,7 +990,7 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
         }
         DISPATCH();
     }
-    ___L_COLD_LABEL:{
+    ___L_COLD_LABEL: [[unlikely]] {
         code = execute_cold_inst(code, frame_buffer);//code on the last argument of the instruction or on the instruction if it has no argument
         DISPATCH();
     }

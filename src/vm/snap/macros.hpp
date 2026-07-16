@@ -16,7 +16,7 @@
                                         }
 
 /* ---- Binary Arithmetic Instructions ----------------------------------*/
-#define OP_SIMPLE_BINARY_INST(_op, _lhs, _rhs, _expr, _is_missing, _type) _L_##_op:{\
+#define OP_SIMPLE_BINARY_INST(_op, _lhs, _rhs, _expr, _is_missing, _type) _L_##_op: [[likely]]{\
                                                                       const auto lhs = _lhs;\
                                                                       const auto rhs = _rhs;\
                                                                       const auto ptr = frame_buffer + (++code)->value;\
@@ -26,7 +26,7 @@
                                                                       DISPATCH();\
                                                                   }
 
-#define OP_SIMPLE_DIV_REM_INST(_op, _lhs, _rhs, _expr, _is_missing, _type) _L_##_op:{\
+#define OP_SIMPLE_DIV_REM_INST(_op, _lhs, _rhs, _expr, _is_missing, _type) _L_##_op: [[likely]]{\
                                                                                const auto lhs = _lhs;\
                                                                                const auto rhs = _rhs;\
                                                                                const auto ptr = frame_buffer + (++code)->value;\
@@ -36,7 +36,7 @@
                                                                                DISPATCH();\
                                                                            }
 
-#define OP_SIMPLE_FLOAT_DIV_INST(_op, _lhs, _rhs, _expr, _is_missing, _type) _L_##_op:{\
+#define OP_SIMPLE_FLOAT_DIV_INST(_op, _lhs, _rhs, _expr, _is_missing, _type) _L_##_op: [[likely]]{\
                                                                                   const auto lhs = _lhs;\
                                                                                   const auto rhs = _rhs;\
                                                                                   const auto ptr = frame_buffer + (++code)->value;\
@@ -48,7 +48,7 @@
                                                                               }
 
 /* ---- Other Arithmetic Instructions ------- */
-#define OP_SIMPLE_COLD_WEIGHED_ADD_INST(_op, _acc, _acc_value, _weight, _mul_expr, _is_acc_missing, _is_missing_expr, _type) _L_##_op:{\
+#define OP_SIMPLE_COLD_WEIGHED_ADD_INST(_op, _acc, _acc_value, _weight, _mul_expr, _is_acc_missing, _is_missing_expr, _type) _L_##_op: [[likely]]{\
                                                                                                                                  const auto loop_count = (++code)->value;\
                                                                                                                                  const auto acc = _acc;\
                                                                                                                                  bool is_missing = _is_acc_missing;\
@@ -68,7 +68,7 @@
 
 
 /* ---- Comparison Instruction ------------------*/
-#define OP_SIMPLE_CMP_BINARY_INST(_op, _lhs, _rhs, _expr, _is_missing) _L_##_op:{\
+#define OP_SIMPLE_CMP_BINARY_INST(_op, _lhs, _rhs, _expr, _is_missing) _L_##_op: [[likely]]{\
                                                                            const auto lhs = _lhs;\
                                                                            const auto rhs = _rhs;\
                                                                            const auto ptr = frame_buffer + (++code)->value;\
@@ -78,7 +78,7 @@
                                                                            DISPATCH();\
                                                                        }
 
-#define OP_SIMPLE_IN_RANGE_INST(_op, _arg1, _arg2, _arg3, _arg4, _expr, _is_missing) _L_##_op:{\
+#define OP_SIMPLE_IN_RANGE_INST(_op, _arg1, _arg2, _arg3, _arg4, _expr, _is_missing) _L_##_op: [[likely]]{\
                                                                                         const auto arg1 = _arg1;\
                                                                                         const auto arg2 = _arg2;\
                                                                                         const auto arg3 = _arg3;\
@@ -90,7 +90,7 @@
                                                                                         DISPATCH();\
                                                                                     }
 
-#define OP_SIMPLE_COLD_IN_RANGE_INST(_op, _arg1, _arg2, _arg3, _arg4, _expr, _is_missing) _L_##_op:{\
+#define OP_SIMPLE_COLD_IN_RANGE_INST(_op, _arg1, _arg2, _arg3, _arg4, _expr, _is_missing) _L_##_op: [[unlikely]]{\
                                                                                               const auto arg1 = _arg1;\
                                                                                               const auto arg2 = _arg2;\
                                                                                               const auto arg3 = _arg3;\
@@ -102,7 +102,7 @@
                                                                                               return code;\
                                                                                           }
 /* ---- Unary Instruction ------------------*/
-#define OP_SIMPLE_UNARY_INST(_op, _arg, _type, _expr, _is_missing) _L_##_op:{\
+#define OP_SIMPLE_UNARY_INST(_op, _arg, _type, _expr, _is_missing) _L_##_op: [[likely]]{\
                                                                     const auto arg = _arg;\
                                                                     const auto ptr = frame_buffer + (++code)->value;\
                                                                     ptr->type = _type;\
@@ -111,7 +111,7 @@
                                                                     DISPATCH();\
                                                                 }
     
-#define OP_SIMPLE_COLD_UNARY_INST(_op, _arg, _type, _expr, _is_missing) _L_##_op:{\
+#define OP_SIMPLE_COLD_UNARY_INST(_op, _arg, _type, _expr, _is_missing) _L_##_op: [[likely]]{\
                                                                             const auto arg = _arg;\
                                                                             const auto ptr = frame_buffer + (++code)->value;\
                                                                             ptr->type = _type;\
@@ -121,7 +121,7 @@
                                                                         }
 
 /* ---- Fused Compare-and-Branch(Takes in 2 or 4 operands + 3 branches(if branch,else branch and data missing branch)) ----------------------------------------*/
-#define OP_SIMPLE_BR_BINARY_CMP_INST(_op, _lhs, _rhs, _expr, _is_missing) _L_##_op:{\
+#define OP_SIMPLE_BR_BINARY_CMP_INST(_op, _lhs, _rhs, _expr, _is_missing) _L_##_op: [[likely]]{\
                                                                               const auto lhs = _lhs;\
                                                                               const auto rhs = _rhs;\
                                                                               const auto label1 = (Value*)((++code)->value);\
@@ -132,7 +132,7 @@
                                                                               else{GOTO(label2)}\
                                                                           }
 
-#define OP_SIMPLE_BR_IN_RANGE_INST(_op, _arg1, _arg2, _arg3, _arg4, _expr, _is_missing) _L_##_op:{\
+#define OP_SIMPLE_BR_IN_RANGE_INST(_op, _arg1, _arg2, _arg3, _arg4, _expr, _is_missing) _L_##_op: [[likely]]{\
                                                                                             const auto arg1 = _arg1;\
                                                                                             const auto arg2 = _arg2;\
                                                                                             const auto arg3 = _arg3;\
@@ -145,7 +145,7 @@
                                                                                             else{GOTO(label2)}\
                                                                                         }
 
-#define OP_SIMPLE_COLD_BR_IN_RANGE_INST(_op, _arg1, _arg2, _arg3, _arg4, _expr, _is_missing) _L_##_op:{\
+#define OP_SIMPLE_COLD_BR_IN_RANGE_INST(_op, _arg1, _arg2, _arg3, _arg4, _expr, _is_missing) _L_##_op: [[unlikely]]{\
                                                                                                  const auto arg1 = _arg1;\
                                                                                                  const auto arg2 = _arg2;\
                                                                                                  const auto arg3 = _arg3;\
@@ -160,7 +160,7 @@
                                                                                              }
 
 /* ---- Heap objects: arrays ---------------------------------------------*/
-#define OP_SIMPLE_GET_INT64FLOAT_INST(_op, _ptr, _vm_type) _L_##_op:{\
+#define OP_SIMPLE_GET_INT64FLOAT_INST(_op, _ptr, _vm_type) _L_##_op: [[likely]]{\
                                                                const auto ptr = _ptr;\
                                                                const auto offset = (++code)->value;\
                                                                const auto result_ptr = frame_buffer + (++code)->value;\
@@ -169,7 +169,7 @@
                                                                result_ptr->value = result_ptr->is_missing ? 0 : *(int64_t*)(ptr.value + offset*ptr.element_size);\
                                                                DISPATCH();\
                                                            }
-#define OP_SIMPLE_GET_PTR_INST(_op, _ptr) _L_##_op:{\
+#define OP_SIMPLE_GET_PTR_INST(_op, _ptr) _L_##_op: [[likely]]{\
                                               const auto ptr = _ptr;\
                                               const auto offset = (++code)->value;\
                                               const auto result_ptr = frame_buffer + (++code)->value;\

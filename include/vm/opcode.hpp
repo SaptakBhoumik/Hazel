@@ -15,7 +15,7 @@ enum class Opcode:std::uint8_t{
     //     But for stuff like SET, GET, DIV(Division by zero unintentionally when is missing is true), REM, we check few argument(Not all. Like for DIV only the b of a/b needs to be checked). Because that can cause segfault
     //We use fixed point floating point because faster and less weird behaviour. We have 4 fractional digits. So 1.2345 is stored as 12345. The scaling factor is 10000.
     /* ---- Loads -----------------------------------------
-    * LOAD_* takes an immediate/register and a dest register. If dest and source type dont match then it is a cast.
+    * LOAD_* takes an immediate/register and a dest register. If dest and source type dont match then it is a cast. It is a copy(More of a shallow copy because dont copy the content of the ptr itself)
     */
     OP_PTR_LOAD_PTR = 0,
     OP_I64_LOAD_I64, OP_I64_LOAD_FLOAT,
@@ -98,7 +98,7 @@ enum class Opcode:std::uint8_t{
     /* ---- Comparison Instruction ------------------*/
     //We are using fixed point floating point. So if both lhs and rhs are of same type(Which they should be) then comparison instructions dont care if it is a float/integer
     OP_I64_EQ_PTRI64FLOAT_PTRI64FLOAT,
-    OP_I64_NEQ_PTRI64FLOAT_PTRI64FLOAT,
+    OP_I64_NE_PTRI64FLOAT_PTRI64FLOAT,
     OP_I64_GT_PTRI64FLOAT_PTRI64FLOAT,
     OP_I64_GE_PTRI64FLOAT_PTRI64FLOAT,
     OP_I64_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOAT,//(lower,upper,step)
@@ -107,7 +107,7 @@ enum class Opcode:std::uint8_t{
     OP_I64_NOT_IN_RANGE_PTR_PTR_PTR_I64,//(lower,upper,step) Note:-The step in bytes is scale*step. Where scale is sizeof element
 
     OP_I64_EQ_PTRI64FLOAT_PTRI64FLOATI,
-    OP_I64_NEQ_PTRI64FLOAT_PTRI64FLOATI,
+    OP_I64_NE_PTRI64FLOAT_PTRI64FLOATI,
     OP_I64_GT_PTRI64FLOAT_PTRI64FLOATI,
     OP_I64_GE_PTRI64FLOAT_PTRI64FLOATI,
     OP_I64_GT_PTRI64FLOATI_PTRI64FLOAT,
@@ -137,6 +137,7 @@ enum class Opcode:std::uint8_t{
     OP_BR_GT_PTRI64FLOAT_PTRI64FLOAT,
     OP_BR_OR_I64_I64,
     OP_BR_AND_I64_I64,
+    OP_BR_XOR_I64_I64,
     OP_BR_IN_RANGE_I64FLOAT_I64FLOAT_I64FLOAT_I64FLOAT,
     OP_BR_IN_RANGE_PTR_PTR_PTR_I64,
     
@@ -149,7 +150,8 @@ enum class Opcode:std::uint8_t{
 
     /*--------Regular branch-----*/
     OP_BR,//Only takes in one branch. Unconditional
-    OP_BR_TRUE,//Only takes in 1 condition operand + 3 branches. 
+    // OP_BR_TRUE,//Only takes in 1 condition operand + 3 branches. . No such br because u can easily emulate this with br(cond == 1)
+    // No OP_IS_MISSING because that can be emulated by br(cond == 0, not_missing_label, not_missing_label, missing_label). So no need of a separate instruction
 
 
     /* ---- Calls --------------------------------------- */
@@ -191,7 +193,8 @@ enum class Opcode:std::uint8_t{
     OP_I64_ELM_SIZE_PTR,//dest = size of each element in bytes
     //For push and pop, if the pointer is from pointer offset then that is treated as a new array and the length and capacity starts from the remaining length and capacity.
     //SO keep it in mind cuz push or pop on the pointer offset will not change the length and capacity of the original array. 
-    //It will only change the length and capacity of the pointer offset array
+    //It will on1ly change the length and capacity of the pointer offset array
+    //TODO:Delete at a partiqular index.
     OP_POP_PTR_I64,//POP the number of elements specified by the second argument
     OP_PUSH_PTR_PTR_I64_II64,//PUSH the number of elements specified by the third argument. Last item is the number by which to increase capacity if needed(Note if capacity is increased then the pointer may change so user must be careful)
     OP_PUSH_PTR_I64FLOAT_II64,//PUSH 164 or FLOAT value to the end of the array. The third argument is the value to be pushed. Last item is the number by which to increase capacity if needed(Note if capacity is increased then the pointer may change so user must be careful)
@@ -207,17 +210,17 @@ enum class Opcode:std::uint8_t{
     // OP_PTR_DL_GET_FUNC_PTR_PTR,//Takens in a string ptr and the ptr to the library u get from DL_OPEN. Returns the function pointer
  
 
-    /*----Time series related--------------------------------------
-     *These are not strictly related to time series but will be used there most*/
-    OP_I64_BINARY_FIND_GE_PTR_I64_I64_I64FLOAT,//index of first entry with value >= x (or "Missing" if no such entry exists). The second argument is the index at which to start. Third argument is the size
-    OP_I64_BINARY_FIND_LE_PTR_I64_I64_I64FLOAT,//index of last entry with value <= x (or "Missing" if no such entry exists). The second argument is the index at which to start. Third argument is the size
-    OP_I64_BINARY_FIND_GE_PTR_II64_I64_I64FLOAT,//The index is often 0 so we allow them to just pass an immediate value with this
-    OP_I64_BINARY_FIND_LE_PTR_II64_I64_I64FLOAT,//The index is often 0 so we allow them to just pass an immediate value with this
+    // /*----Time series related--------------------------------------
+    //  *These are not strictly related to time series but will be used there most*/
+    // OP_I64_BINARY_FIND_GE_PTR_I64_I64_I64FLOAT,//index of first entry with value >= x (or "Missing" if no such entry exists). The second argument is the index at which to start. Third argument is the size
+    // OP_I64_BINARY_FIND_LE_PTR_I64_I64_I64FLOAT,//index of last entry with value <= x (or "Missing" if no such entry exists). The second argument is the index at which to start. Third argument is the size
+    // OP_I64_BINARY_FIND_GE_PTR_II64_I64_I64FLOAT,//The index is often 0 so we allow them to just pass an immediate value with this
+    // OP_I64_BINARY_FIND_LE_PTR_II64_I64_I64FLOAT,//The index is often 0 so we allow them to just pass an immediate value with this
 
-    OP_I64_BINARY_FIND_GE_PTR_I64_I64FLOAT,//These dont take in size and considers the size of the element same as the size mentioned in the ptr
-    OP_I64_BINARY_FIND_LE_PTR_I64_I64FLOAT,//These dont take in size and considers the size of the element same as the size mentioned in the ptr
-    OP_I64_BINARY_FIND_GE_PTR_II64_I64FLOAT,//These dont take in size and considers the size of the element same as the size mentioned in the ptr
-    OP_I64_BINARY_FIND_LE_PTR_II64_I64FLOAT,//These dont take in size and considers the size of the element same as the size mentioned in the ptr
+    // OP_I64_BINARY_FIND_GE_PTR_I64_I64FLOAT,//These dont take in size and considers the size of the element same as the size mentioned in the ptr
+    // OP_I64_BINARY_FIND_LE_PTR_I64_I64FLOAT,//These dont take in size and considers the size of the element same as the size mentioned in the ptr
+    // OP_I64_BINARY_FIND_GE_PTR_II64_I64FLOAT,//These dont take in size and considers the size of the element same as the size mentioned in the ptr
+    // OP_I64_BINARY_FIND_LE_PTR_II64_I64FLOAT,//These dont take in size and considers the size of the element same as the size mentioned in the ptr
 
     /*-------Traceback--------------------------------*/
     OP_PRINT_PTR,//Prints the string pointed by the pointer. Note:-The IO is flushed after every print
