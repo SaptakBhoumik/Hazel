@@ -329,10 +329,10 @@ FunctionPtr Parser::reduce_function(FunctionPtr func, Utils::Graph& call_graph, 
                                     std::unordered_map<std::string, TypeExprPtr> type_table, std::unordered_map<std::string, TypeExprPtr> func_symbol_table) const{
     std::string func_name = func->get_name().value;
     std::unordered_map<std::string, TypeExprPtr> label_symbol_table;
-    std::unordered_map<std::string, TypeExprPtr> local_var_table;
+    std::unordered_map<std::string, TypeExprPtr> reset_local_var_table;
     std::unordered_map<std::string, std::unordered_map<std::string, TypeExprPtr>> label_param_table;
     for(auto& reduced_param : reduced_params){
-        local_var_table[reduced_param.first.value] = reduced_param.second;
+        reset_local_var_table[reduced_param.first.value] = reduced_param.second;
     }
     for(auto& label : func->get_body()){
         std::string label_name = label->get_name().value;
@@ -355,10 +355,15 @@ FunctionPtr Parser::reduce_function(FunctionPtr func, Utils::Graph& call_graph, 
     }
     std::vector<LabelPtr> new_labels;
     for(auto& label : func->get_body()){
+        auto local_var_table = reset_local_var_table;
         std::string label_name = label->get_name().value;
         auto reduced_label_param = label_param_table[label_name];
         std::vector<InstructionStmtPtr> new_statements;
-        for(auto& stmt : label->get_statements()){
+        if(label->get_statements().empty()){
+            error(label->get_token(), "Label has no statements", "Label name: " + label_name);
+        }
+        for(std::size_t i=0;i<label->get_statements().size();i++){
+            auto stmt = label->get_statements()[i];
             std::vector<LiteralExprPtr> new_params;
             for(auto& param : stmt->get_params()){
                 auto reduced_param = reduce_literal_expr(param, call_graph, func_name, type_table, func_symbol_table, label_symbol_table, local_var_table, reduced_label_param);
@@ -377,8 +382,8 @@ FunctionPtr Parser::reduce_function(FunctionPtr func, Utils::Graph& call_graph, 
                 local_var_table[var_name.value] = reduced_var_type;
                 new_name = std::make_pair(var_name, reduced_var_type);
             }
-            auto new_inst = std::make_shared<InstructionStmt>(stmt->get_token(), stmt->get_instruction(), new_name, new_params, stmt->get_debug_info());
-            typecheck_inst(new_inst, func_symbol_table[func_name]);
+            auto new_inst = std::make_shared<InstructionStmt>(stmt->get_token(), stmt->get_instruction(), new_name, stmt->get_original_name(), new_params, stmt->get_debug_info());
+            typecheck_inst(new_inst, func_symbol_table[func_name], i == label->get_statements().size() - 1);
             new_statements.push_back(new_inst);
         }
         new_labels.push_back(std::make_shared<Label>(label->get_token(), label->get_name(), new_statements, label->get_params(), label->get_debug_info(), true));

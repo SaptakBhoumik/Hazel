@@ -2,11 +2,12 @@
 #include "ir/ast/ast.hpp"
 #include "ir/lexer/token.hpp"
 #include <iostream>
+#include "instruction_arg_type.hpp"
 
 namespace Hazel {
 namespace Snap{
 namespace IR {
-void Parser::typecheck_inst(InstructionStmtPtr stmt, TypeExprPtr curr_func_type) const{
+void Parser::typecheck_inst(InstructionStmtPtr stmt, TypeExprPtr curr_func_type, bool last_inst) const{
     std::string inst_name = stmt->get_instruction().value;
     auto params = stmt->get_params();
     auto dest = stmt->get_name();
@@ -52,8 +53,8 @@ void Parser::typecheck_inst(InstructionStmtPtr stmt, TypeExprPtr curr_func_type)
         }
     }
     else if(inst_name == ".get_field"){
-        if(params.size() != 1){
-            error(stmt->get_token(), "Get field instruction expects exactly one parameter", "Number of parameters: " + std::to_string(params.size()));
+        if(params.size() != 2){
+            error(stmt->get_token(), "Get field instruction expects exactly two parameters", "Number of parameters: " + std::to_string(params.size()));
         }
         if(params[0]->get_type()->get_kind() != TypeExprKind::StructTypeExpr){
             error(params[0]->get_token(), "Get field instruction expects a struct type as the first parameter", "Get field parameter type: " + params[0]->get_type()->to_string());
@@ -62,7 +63,7 @@ void Parser::typecheck_inst(InstructionStmtPtr stmt, TypeExprPtr curr_func_type)
             error(params[1]->get_token(), "Get field instruction expects an constexpr int type as the second parameter", "Get field parameter type: " + params[1]->get_type()->to_string());
         }
         auto struct_type = std::dynamic_pointer_cast<StructTypeExpr>(params[0]->get_type());
-        std::int64_t field_index = std::stoll(params[1]->get_token().value);
+        std::uint64_t field_index = std::stoull(params[1]->get_token().value);
         if(field_index < 0 || field_index >= struct_type->get_fields().size()){
             error(params[1]->get_token(), "Get field instruction field index out of bounds", "Field index: " + std::to_string(field_index) + ", Struct field count: " + std::to_string(struct_type->get_fields().size()));
         }
@@ -89,7 +90,7 @@ void Parser::typecheck_inst(InstructionStmtPtr stmt, TypeExprPtr curr_func_type)
             error(params[1]->get_token(), "Set field instruction expects an constexpr int type as the second parameter", "Set field parameter type: " + params[1]->get_type()->to_string());
         }
         auto struct_type = std::dynamic_pointer_cast<StructTypeExpr>(params[0]->get_type());
-        std::int64_t field_index = std::stoll(params[1]->get_token().value);
+        std::uint64_t field_index = std::stoull(params[1]->get_token().value);
         if(field_index < 0 || field_index >= struct_type->get_fields().size()){
             error(params[1]->get_token(), "Set field instruction field index out of bounds", "Field index: " + std::to_string(field_index) + ", Struct field count: " + std::to_string(struct_type->get_fields().size()));
         }
@@ -171,7 +172,66 @@ void Parser::typecheck_inst(InstructionStmtPtr stmt, TypeExprPtr curr_func_type)
         }
     }
     else{
-        //TODO:
+        auto it = instruction_arg_type_map.find(inst_name);
+        if(it == instruction_arg_type_map.end()){
+            error(stmt->get_token(), "Unknown instruction", "Instruction name: " + inst_name);
+        }
+        auto valid_arg_types = it->second;
+        bool valid = false;
+        for(auto& valid_types : valid_arg_types){
+            if(valid_types.size() - 1 != params.size()){
+                continue;
+            }
+            TypeExprPtr any_type = nullptr; 
+            if(valid_types.back() == TypeExprKind::VoidTypeExpr && !dest.has_value()){}
+            else if(valid_types.back() != TypeExprKind::VoidTypeExpr && dest.has_value()){
+                if(dest.value().second->get_kind() != valid_types.back()){
+                    if(valid_types.back() == TypeExprKind::AnyTypeExpr){
+                        any_type = dest.value().second;
+                    }
+                    else{
+                        continue;
+                    }
+                }
+            }
+            else{
+                continue;
+            }
+            bool valid_params = true;
+            for(std::size_t i = 0; i < params.size(); i ++){
+                if(params[i]->get_type()->get_kind() != valid_types[i]){
+                    if(valid_types[i] == TypeExprKind::AnyTypeExpr){
+                        if(any_type == nullptr){
+                            any_type = params[i]->get_type();
+                        }
+                        else{
+                            if(!TypeUtils::is_type_equal(any_type, params[i]->get_type(), false)){
+                                valid_params = false;
+                                break;
+                            }
+                        }
+                    }
+                    else{
+                        valid_params = false;
+                        break;
+                    }
+                }
+            }
+            if(valid_params){
+                valid = true;
+                break;
+            }
+        }
+        if(!valid){
+            error(stmt->get_token(), "Instruction parameter/destination type mismatch", "Instruction name: " + inst_name);
+        }
+    }
+    auto is_terminator = terminator_inst.find(inst_name) != terminator_inst.end();
+    if(is_terminator && !last_inst){
+        error(stmt->get_token(), "Terminator instruction should be the last instruction in a label", "Instruction name: " + inst_name);
+    }
+    else if(!is_terminator && last_inst){
+        error(stmt->get_token(), "Non-terminator instruction should not be the last instruction in a label", "Instruction name: " + inst_name);
     }
 }
 }

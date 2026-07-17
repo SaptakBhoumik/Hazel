@@ -1,3 +1,4 @@
+#pragma once
 #include "ir/ast/ast.hpp"
 #include "ir/lexer/token.hpp"
 #include "utils/graph.hpp"
@@ -53,7 +54,7 @@ class Parser {
 
 
     void typecheck();//Not the full thing. IT doesnt check if the types are proper for the instruction. It does a basic symbol table and that is all. Need seperate check for that
-    void typecheck_inst(InstructionStmtPtr stmt, TypeExprPtr curr_func_type) const;//For ret 
+    void typecheck_inst(InstructionStmtPtr stmt, TypeExprPtr curr_func_type, bool last_inst) const;//For ret 
     bool self_reference_type(TypeExprPtr type, std::string name) const;
     std::unordered_map<std::string, TypeExprPtr> construct_type_table() const;//Constructs a type table from the global typedefs. The types in the type table are reduced types
     //The types in type_table are expected to be reduced types.

@@ -181,6 +181,31 @@ const static std::unordered_map<std::string, std::vector<std::vector<TypeExprKin
     {".print",{{TypeExprKind::StringTypeExpr,TypeExprKind::VoidTypeExpr},
                     {TypeExprKind::PtrTypeExpr,TypeExprKind::VoidTypeExpr}}},
 };
+
+const std::unordered_set<std::string> terminator_inst = {
+    ".br_eq",
+    ".br_ne",
+    ".br_gt",
+    ".br_lt",
+    ".br_ge",
+    ".br_le",
+    ".br_inrange",
+    ".br_not_inrange",
+    ".br_or",
+    ".br_and",
+    ".br_xor",
+    ".br_has_value",
+    ".br_has_no_value",
+    ".br_true",
+    ".br_false",
+    ".br",
+    ".halt",
+    ".ret",
+    ".trap",
+    ".trap_true",
+    ".trap_is_missing",
+    ".unreachable"
+};
 }
 }
 }

@@ -303,13 +303,15 @@ class InstructionStmt{
     Token tok;//the 'let'/instruction token for error reporting
     Token instruction;//the instruction token
     std::optional<std::pair<Token, TypeExprPtr>> name;//Empty if we dont assign the statement to a variable
+    std::optional<std::string> original_name;//Empty for synthetic variable
     std::vector<LiteralExprPtr> params;
     DebugInfoPtr debug_info = nullptr;
     public:
-    InstructionStmt(Token tok, Token instruction, std::optional<std::pair<Token, TypeExprPtr>> name, std::vector<LiteralExprPtr> params, DebugInfoPtr debug_info);
+    InstructionStmt(Token tok, Token instruction, std::optional<std::pair<Token, TypeExprPtr>> name, std::optional<std::string> original_name, std::vector<LiteralExprPtr> params, DebugInfoPtr debug_info);
 
     Token get_instruction() const;
     std::optional<std::pair<Token, TypeExprPtr>> get_name() const;
+    std::optional<std::string> get_original_name() const;
     std::vector<LiteralExprPtr> get_params() const;
     DebugInfoPtr get_debug_info() const;
     Token get_token() const;
@@ -358,7 +360,7 @@ class Function {
     std::vector<LabelPtr> body;//Empty if it is just a function declaration without a body. A function declaration with body must have atleast one label
                                //The first label is the entry point. Atleast one label is needed so we for forward declaration without body, this vector has 0 length
     std::unordered_map<std::string,std::uint64_t> label_map;//For faster access. The second argument is the index of the label in the body. Calculated automatically
-    std::unordered_map<std::string,std::uint64_t> local_var_map;//For faster access. The second argument is the index of the local variable in the labels
+    // std::unordered_map<std::string,std::uint64_t> local_var_map;//For faster access. The second argument is the index of the local variable in the labels
     DebugInfoPtr debug_info = nullptr;
     public:
     Function(Token tok, Token name, std::vector<std::pair<Token, TypeExprPtr>> params, TypeExprPtr return_type,
@@ -375,8 +377,10 @@ class Function {
 
     std::optional<std::pair<Token, TypeExprPtr>> get_parameter(std::string name) const;
     std::optional<std::pair<Token, LabelPtr>> get_label(std::string name) const;
-    std::optional<std::pair<Token, LabelPtr>> get_label_of_local_var(std::string name) const;
-    std::optional<Utils::triplet<Token, TypeExprPtr, bool>> get_local_var_or_param(std::string name) const;//The first element is the token of variable/parameter, second is the type of variable/parameter, third is true if it is a parameter and false if it is a local variable
+    bool is_param(std::string name) const;
+    std::optional<std::pair<Token,TypeExprPtr>> resolve_name(std::string var_name, std::string label_name) const;//Resolve the name of a variable in a label. First check if it in a label and then check for function parameter
+    // std::optional<std::pair<Token, LabelPtr>> get_label_of_local_var(std::string name) const;
+    // std::optional<Utils::triplet<Token, TypeExprPtr, bool>> get_local_var_or_param(std::string name) const;//The first element is the token of variable/parameter, second is the type of variable/parameter, third is true if it is a parameter and false if it is a local variable
 };
 
 using FunctionPtr = std::shared_ptr<Function>;

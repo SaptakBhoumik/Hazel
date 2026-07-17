@@ -1,33 +1,97 @@
-//Comment
+// Comment header
 /* Multi
-    line
-    comment
+   line
+   comment describing this test module
 */
 
-let #typealias0 = <{integer, decimal, string, [integer], [decimal], [string]}>;
-let #typealias = {integer, #typealias0, string, [integer], [decimal], [string]};
+// Type aliases
+let #point = {integer, integer};
+let #payload = <{integer, decimal, string, [integer], [decimal], [string]}>;
 
-fn $func0() -> #typealias;
-fn $func1();
-fn $func2(let integer:%param) -> integer;
+// Function declarations (no body)
+fn $make_point() -> #point;
+fn $log_msg(let string:%msg);
+fn $sqrt_helper(let decimal:%v) -> decimal;
 
 fn $main() -> integer {
     label @start{
-        let integer:%x = .local(integer:10);
-        let decimal:%y = .local(decimal:20.5);
-        let string:%z = .local(string:"Hello, World!");
-        
-        let [integer]:%arr_int = .local([integer]:[1, 2, 3, 4, 5]);
-        let [decimal]:%arr_dec = .local([decimal]:[1.1, 2.2, 3.3]);
-        let [string]:%arr_str = .local([string]:["one", "two", "three"]);
-        .ret(integer:0);
+        // Integer arithmetic
+        let integer:%a = .load(integer:10);
+        let integer:%b = .load(integer:3);
+        let integer:%sum = .add(integer:%a, integer:%b);
+        let integer:%diff = .sub(integer:%a, integer:%b);
+        let integer:%prod = .mul(integer:%a, integer:%b);
+        let integer:%cmp = .gt(integer:%sum, integer:%diff);
+
+        .br_has_value(integer:%cmp, label(integer):@decimals(%prod), label():@missing);
     }
-    label @end(let integer:%result) {
-        .call(fn:$func1);
-        .call(fn():$func1());
-        .call(fn(integer)->integer:$func2(5));
-        .br(label(integer):@end(%result));
-        .br(label():@start);
+
+    label @missing{
+        .trap();
+    }
+
+    label @decimals(let integer:%prod){
+        // Decimal arithmetic
+        let decimal:%x = .load(decimal:3.14);
+        let decimal:%y = .load(decimal:2.71);
+        let decimal:%dsum = .add(decimal:%x, decimal:%y);
+        let decimal:%droot = .call(fn(decimal)->decimal:$sqrt_helper(%dsum));
+        let decimal:%dfloor = .floor(decimal:%droot);
+        let decimal:%dneg = .neg(decimal:%dfloor);
+        let decimal:%dabs = .abs(decimal:%dneg);
+
+        .br(label(integer):@arrays(%prod));
+    }
+
+    label @arrays(let integer:%prod){
+        // Array operations
+        let [integer]:%arr = .load([integer]:[1, 2, 3, 4, 5]);
+        let integer:%idx2 = .load(integer:2);
+        let integer:%idx0 = .load(integer:0);
+        let integer:%newval = .load(integer:100);
+        let integer:%pushval = .load(integer:6);
+        let integer:%pushcount = .load(integer:1);
+
+        let integer:%len = .len([integer]:%arr);
+        let integer:%elem = .get_elem([integer]:%arr, integer:%idx2);
+        .set_elem([integer]:%arr, integer:%idx0, integer:%newval);
+        .push([integer]:%arr, [integer]:%arr, integer:%pushval, integer:%pushcount);
+        let integer:%cap = .cap([integer]:%arr);
+
+        .br(label(integer):@structs(%prod));
+    }
+
+    label @structs(let integer:%prod){
+        // Struct operations via function call
+        let #point:%p = .call(fn()->#point:$make_point());
+        let integer:%px = .get_field(#point:%p, integer:0);
+        let integer:%newfield = .load(integer:42);
+        .set_field(#point:%p, integer:1, integer:%newfield);
+        let integer:%py = .get_field(#point:%p, integer:1);
+
+        // Weighted sum (all args same type)
+        let integer:%w1 = .load(integer:2);
+        let integer:%w2 = .load(integer:3);
+        let integer:%w3 = .load(integer:1);
+        let integer:%wsum = .weighed_add(integer:%px, integer:%w1, integer:%py, integer:%w2, integer:%w3);
+
+        .br(label(integer):@memory(%prod));
+    }
+
+    label @memory(let integer:%prod){
+        // Heap allocation and cleanup
+        let integer:%heap_count = .load(integer:8);
+        let integer:%heap_flag = .load(integer:0);
+        let [integer]:%heap_arr = .alloc(integer:%heap_count, integer:%heap_flag);
+        let integer:%heap_len:"original_name" = .len([integer]:%heap_arr);
+        .free([integer]:%heap_arr);
+
+        .call(fn(string):$log_msg("Finished memory ops"));
+        .br(label(integer):@end(%prod));
+    }
+
+    label @end(let integer:%result){
+        .print(string:"Test program complete");
         .ret(integer:%result);
     }
 }

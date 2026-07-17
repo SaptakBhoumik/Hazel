@@ -17,6 +17,7 @@ ir_parser_src = [
     'parser/snap/parser.cpp',
     'parser/snap/utils.cpp',
     'parser/snap/basic_typechecker.cpp',
+    'parser/snap/typecheck_inst.cpp',
 ]
 
 ir_include = include_directories('../../include/')

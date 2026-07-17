@@ -26,10 +26,11 @@ std::string DebugInfo::to_string() const{
 }
 
 
-InstructionStmt::InstructionStmt(Token tok, Token instruction, std::optional<std::pair<Token, TypeExprPtr>> name, std::vector<LiteralExprPtr> params, DebugInfoPtr debug_info){
+InstructionStmt::InstructionStmt(Token tok, Token instruction, std::optional<std::pair<Token, TypeExprPtr>> name, std::optional<std::string> original_name, std::vector<LiteralExprPtr> params, DebugInfoPtr debug_info){
     this->tok = tok;
     this->instruction = instruction;
     this->name = name;
+    this->original_name = original_name;
     this->params = params;
     this->debug_info = debug_info;
 }
@@ -38,6 +39,9 @@ Token InstructionStmt::get_instruction() const{
 }
 std::optional<std::pair<Token, TypeExprPtr>> InstructionStmt::get_name() const{
     return this->name;
+}
+std::optional<std::string> InstructionStmt::get_original_name() const{
+    return this->original_name;
 }
 std::vector<LiteralExprPtr> InstructionStmt::get_params() const{
     return this->params;
@@ -51,7 +55,11 @@ Token InstructionStmt::get_token() const{
 std::string InstructionStmt::to_string() const{
     std::string res;
     if(this->name.has_value()){
-        res = "let " + this->name.value().second->to_string() + ":" + this->name.value().first.value + " = ";
+        res = "let " + this->name.value().second->to_string() + ":" + this->name.value().first.value;
+        if(this->original_name.has_value()){
+            res += ":\"" + this->original_name.value() + "\"";
+        }
+        res += " = ";
     }
     res += this->instruction.value + "(";
     for(size_t i=0;i<this->params.size();i++){
@@ -171,12 +179,12 @@ Function::Function(Token tok, Token name, std::vector<std::pair<Token, TypeExprP
         }
         for(size_t i=0;i<this->body.size();i++){
             this->label_map[this->body[i]->get_name().value] = i;
-            for(const auto& stmt: this->body[i]->get_statements()){
-                auto stmt_name = stmt->get_name();
-                if(stmt_name.has_value()){
-                    this->local_var_map[stmt_name.value().first.value] = i;
-                }
-            }
+            // for(const auto& stmt: this->body[i]->get_statements()){
+            //     auto stmt_name = stmt->get_name();
+            //     if(stmt_name.has_value()){
+            //         this->local_var_map[stmt_name.value().first.value] = i;
+            //     }
+            // }
         }
     }
 }
@@ -240,29 +248,45 @@ std::optional<std::pair<Token, LabelPtr>> Function::get_label(std::string name) 
     auto label = this->body[it->second];
     return std::make_pair(label->get_name(), label);
 }
-std::optional<std::pair<Token, LabelPtr>> Function::get_label_of_local_var(std::string name) const{
-    auto it = this->local_var_map.find(name);
-    if(it == this->local_var_map.end()){
+bool Function::is_param(std::string name) const{
+    return this->parameter_map.find(name) != this->parameter_map.end();
+}
+std::optional<std::pair<Token,TypeExprPtr>> Function::resolve_name(std::string var_name, std::string label_name) const{
+    // First check if the variable is a parameter
+    if(is_param(var_name)){
+        return this->get_parameter(var_name);
+    }
+    // Then check if the variable is in the specified label
+    auto label_it = this->label_map.find(label_name);
+    if(label_it == this->label_map.end()){
         return std::nullopt;
     }
-    auto label = this->body[it->second];
-    auto local_var = label->get_local_var(name);
-    return std::make_pair(local_var.value().first, label);
+    auto label = this->body[label_it->second];
+    return label->get_local_var(var_name);
 }
-std::optional<Utils::triplet<Token, TypeExprPtr, bool>> Function::get_local_var_or_param(std::string name) const{
-    auto param_it = this->parameter_map.find(name);
-    if(param_it != this->parameter_map.end()){
-        auto param = this->params[param_it->second];
-        return Utils::triplet<Token, TypeExprPtr, bool>(param.first, param.second, true);
-    }
-    auto local_it = this->local_var_map.find(name);
-    if(local_it != this->local_var_map.end()){
-        auto label = this->body[local_it->second];
-        auto local_var = label->get_local_var(name);
-        return Utils::triplet<Token, TypeExprPtr, bool>(local_var.value().first, local_var.value().second, false);
-    }
-    return std::nullopt;
-}
+// std::optional<std::pair<Token, LabelPtr>> Function::get_label_of_local_var(std::string name) const{
+//     auto it = this->local_var_map.find(name);
+//     if(it == this->local_var_map.end()){
+//         return std::nullopt;
+//     }
+//     auto label = this->body[it->second];
+//     auto local_var = label->get_local_var(name);
+//     return std::make_pair(local_var.value().first, label);
+// }
+// std::optional<Utils::triplet<Token, TypeExprPtr, bool>> Function::get_local_var_or_param(std::string name) const{
+//     auto param_it = this->parameter_map.find(name);
+//     if(param_it != this->parameter_map.end()){
+//         auto param = this->params[param_it->second];
+//         return Utils::triplet<Token, TypeExprPtr, bool>(param.first, param.second, true);
+//     }
+//     auto local_it = this->local_var_map.find(name);
+//     if(local_it != this->local_var_map.end()){
+//         auto label = this->body[local_it->second];
+//         auto local_var = label->get_local_var(name);
+//         return Utils::triplet<Token, TypeExprPtr, bool>(local_var.value().first, local_var.value().second, false);
+//     }
+//     return std::nullopt;
+// }
 
 
 Program::Program(std::vector<FunctionPtr> items, std::optional<Utils::Graph> call_graph, bool calculate_map){

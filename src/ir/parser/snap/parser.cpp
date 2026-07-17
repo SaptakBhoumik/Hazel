@@ -50,7 +50,8 @@ DebugInfoPtr Parser::parse_debug_info(){
 }
 InstructionStmtPtr Parser::parse_instruction_stmt(){
     Token tok = this->curr_tok;
-    std::optional<std::pair<Token, TypeExprPtr>> name;
+    std::optional<std::pair<Token, TypeExprPtr>> name = std::nullopt;
+    std::optional<std::string> original_name = std::nullopt;
     if(tok.type == TokenType::kw_let){
         advance();
         TypeExprPtr type = parse_type_expr();
@@ -58,6 +59,11 @@ InstructionStmtPtr Parser::parse_instruction_stmt(){
         expect(TokenType::local_identifier, "Expected a local identifier for register name");
         Token name_tok = this->curr_tok;
         name = std::make_pair(name_tok, type);
+        if(peek().type == TokenType::colon){
+            advance();//on the ':' token
+            expect(TokenType::string, "Expected a string literal for original register name");
+            original_name = this->curr_tok.value;
+        }
         expect(TokenType::assign, "Expected '=' after register name in instruction definition");
         advance();//After the '=' token
     }
@@ -85,7 +91,7 @@ InstructionStmtPtr Parser::parse_instruction_stmt(){
         advance();//on the '!' token for debug info
         debug_info = parse_debug_info();
     }
-    return std::make_shared<InstructionStmt>(tok, instr_name, name, operands, debug_info);
+    return std::make_shared<InstructionStmt>(tok, instr_name, name, original_name, operands, debug_info);
 }
 LabelPtr Parser::parse_label(){
     Token tok = this->curr_tok;//the label token
