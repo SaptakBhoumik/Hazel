@@ -16,8 +16,8 @@ fn $sqrt_helper(let decimal:%v) -> decimal;
 fn $main() -> integer {
     label @start{
         // Integer arithmetic
-        let integer:%a = .load(integer:10);
-        let integer:%b = .load(integer:3);
+        let integer:%a = .local(integer:10);
+        let integer:%b = .local(integer:3);
         let integer:%sum = .add(integer:%a, integer:%b);
         let integer:%diff = .sub(integer:%a, integer:%b);
         let integer:%prod = .mul(integer:%a, integer:%b);
@@ -32,8 +32,8 @@ fn $main() -> integer {
 
     label @decimals(let integer:%prod){
         // Decimal arithmetic
-        let decimal:%x = .load(decimal:3.14);
-        let decimal:%y = .load(decimal:2.71);
+        let decimal:%x = .local(decimal:3.14);
+        let decimal:%y = .local(decimal:2.71);
         let decimal:%dsum = .add(decimal:%x, decimal:%y);
         let decimal:%droot = .call(fn(decimal)->decimal:$sqrt_helper(%dsum));
         let decimal:%dfloor = .floor(decimal:%droot);
@@ -45,17 +45,15 @@ fn $main() -> integer {
 
     label @arrays(let integer:%prod){
         // Array operations
-        let [integer]:%arr = .load([integer]:[1, 2, 3, 4, 5]);
-        let integer:%idx2 = .load(integer:2);
-        let integer:%idx0 = .load(integer:0);
-        let integer:%newval = .load(integer:100);
-        let integer:%pushval = .load(integer:6);
-        let integer:%pushcount = .load(integer:1);
+        let [integer]:%arr = .local([integer]:[1, 2, 3, 4, 5]);
+        let integer:%idx2 = .local(integer:2);
+        let integer:%idx0 = .local(integer:0);
+        let integer:%newval = .local(integer:100);
+        let integer:%pushval = .local(integer:6);
+        let integer:%pushcount = .local(integer:1);
 
         let integer:%len = .len([integer]:%arr);
         let integer:%elem = .get_elem([integer]:%arr, integer:%idx2);
-        .set_elem([integer]:%arr, integer:%idx0, integer:%newval);
-        .push([integer]:%arr, [integer]:%arr, integer:%pushval, integer:%pushcount);
         let integer:%cap = .cap([integer]:%arr);
 
         .br(label(integer):@structs(%prod));
@@ -65,14 +63,14 @@ fn $main() -> integer {
         // Struct operations via function call
         let #point:%p = .call(fn()->#point:$make_point());
         let integer:%px = .get_field(#point:%p, integer:0);
-        let integer:%newfield = .load(integer:42);
+        let integer:%newfield = .local(integer:42);
         .set_field(#point:%p, integer:1, integer:%newfield);
         let integer:%py = .get_field(#point:%p, integer:1);
 
         // Weighted sum (all args same type)
-        let integer:%w1 = .load(integer:2);
-        let integer:%w2 = .load(integer:3);
-        let integer:%w3 = .load(integer:1);
+        let integer:%w1 = .local(integer:2);
+        let integer:%w2 = .local(integer:3);
+        let integer:%w3 = .local(integer:1);
         let integer:%wsum = .weighed_add(integer:%px, integer:%w1, integer:%py, integer:%w2, integer:%w3);
 
         .br(label(integer):@memory(%prod));
@@ -80,8 +78,8 @@ fn $main() -> integer {
 
     label @memory(let integer:%prod){
         // Heap allocation and cleanup
-        let integer:%heap_count = .load(integer:8);
-        let integer:%heap_flag = .load(integer:0);
+        let integer:%heap_count = .local(integer:8);
+        let integer:%heap_flag = .local(integer:0);
         let [integer]:%heap_arr = .alloc(integer:%heap_count, integer:%heap_flag);
         let integer:%heap_len:"original_name" = .len([integer]:%heap_arr);
         .free([integer]:%heap_arr);
