@@ -795,6 +795,7 @@ VM_NOCLONE static ReturnValue __attribute__((noinline, used, hot)) execute_vm(Va
     }
 
     /* ---- Calls --------------------------------------- */
+    //TODO:Extern call and call and ret may only need to support one return(Depends on how the IR memory layout is designed). SO update it afterwards accordingly
     _L_OP_EXTERN_CALL_PTR:{
         const auto _pc = code - code_start;
         const auto func_ptr = (ExternFuncType)(++code)->value;

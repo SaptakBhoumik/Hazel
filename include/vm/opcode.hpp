@@ -155,7 +155,7 @@ enum class Opcode:std::uint8_t{
 
 
     /* ---- Calls --------------------------------------- */
-    OP_EXTERN_CALL_PTR,//Takes in a pointer(immediate pointer) to the function. The ptr can be from DL_OPEN or injected by the compiler
+    OP_EXTERN_CALL_PTR,//Takes in a pointer(immediate pointer) to the function. The ptr is injected by the compiler
     OP_CALL,
     OP_RET,
  
